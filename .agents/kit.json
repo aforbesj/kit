@@ -1,0 +1,17 @@
+{
+  "kit": "0.1.0",
+  "stack": "python",
+  "commands": {
+    "typecheck": "uv run pyright",
+    "lint": "uv run ruff check",
+    "test": "uv run pytest -q"
+  },
+  "models": {
+    "plan": "opus",
+    "implement": "sonnet",
+    "review": "opus"
+  },
+  "maxIterations": 20,
+  "handoffTokens": 80000,
+  "sandbox": { "image": "kit-sandbox" }
+}
