@@ -1,0 +1,11 @@
+{
+  "name": "kit",
+  "owner": { "name": "Kit Owner" },
+  "plugins": [
+    {
+      "name": "kit",
+      "source": "./src/kit/plugin",
+      "description": "The Cycle loop: grill, plan, split, build, review, QA, retro."
+    }
+  ]
+}

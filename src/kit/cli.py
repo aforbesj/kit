@@ -1,0 +1,242 @@
+"""kit: four commands that run the Cycle loop (init, once, run, close)."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+PACKAGE = Path(__file__).parent
+TEMPLATE = PACKAGE / "template"
+SKILLS = PACKAGE / "plugin" / "skills"
+STANDARDS = PACKAGE / "standards"
+IGNORE_LINES = ("data/", ".worktrees/", ".agents/handoff.md")
+COMPLETE = "<promise>COMPLETE</promise>"
+CLEAN = "<promise>CLEAN</promise>"
+
+Config = dict[str, Any]
+
+
+def git(cwd: Path, *args: str) -> str:
+    done = subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True)
+    return done.stdout.strip()
+
+
+def init(root: Path) -> list[Path]:
+    """Copy the Product template into root, writing only missing files."""
+    if not (root / ".git").exists():
+        git(root, "init", "-q", "-b", "main")
+    written: list[Path] = []
+    for source in sorted(TEMPLATE.rglob("*")):
+        target = root / source.relative_to(TEMPLATE)
+        if source.is_dir() or target.exists():
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
+        written.append(target)
+    (root / "data" / "out").mkdir(parents=True, exist_ok=True)
+    _add_ignore_lines(root / ".gitignore")
+    return written
+
+
+def _add_ignore_lines(path: Path) -> None:
+    text = path.read_text() if path.exists() else ""
+    missing = [line for line in IGNORE_LINES if line not in text.splitlines()]
+    if missing:
+        prefix = "\n" if text and not text.endswith("\n") else ""
+        path.write_text(text + prefix + "\n".join(missing) + "\n")
+
+
+def load_config(root: Path) -> Config:
+    path = root / ".agents" / "kit.json"
+    if not path.exists():
+        raise SystemExit("No .agents/kit.json here. Run `kit init` first.")
+    config: Config = json.loads(path.read_text())
+    return config
+
+
+def workspace(root: Path, area: str) -> Path:
+    """The Area's own checkout on branch cycle/<area>, created on first use."""
+    path = root / ".worktrees" / area
+    if not path.exists():
+        branch = f"cycle/{area}"
+        known = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", branch], check=False, cwd=root, capture_output=True
+        )
+        if known.returncode == 0:
+            git(root, "worktree", "add", "-q", str(path), branch)
+        else:
+            git(root, "worktree", "add", "-q", "-b", branch, str(path))
+    return path
+
+
+def prompt(skill: str, area: str, cwd: Path, extra: str = "") -> str:
+    text = (SKILLS / skill / "SKILL.md").read_text()
+    body = text.split("---", 2)[2] if text.startswith("---") else text
+    parts = [
+        body.strip(),
+        f"Area: {area}. Cycle folder: .agents/cycles/{area}/",
+        "Recent commits:\n" + git(cwd, "log", "--oneline", "-5"),
+    ]
+    return "\n\n".join([*parts, extra] if extra else parts)
+
+
+def standards(config: Config, cwd: Path) -> str:
+    stack = STANDARDS / f"{config.get('stack', 'python')}.md"
+    project = cwd / ".agents" / "standards.md"
+    texts = [p.read_text() for p in (stack, project) if p.exists()]
+    return "\n\n".join(texts)
+
+
+def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands_off: bool, local: bool) -> list[str]:
+    base: list[str] = list(config.get("agent", ["claude"]))
+    if not hands_off:
+        return [*base, "--permission-mode", "acceptEdits", "--model", model, text]
+    if local:
+        return [*base, "-p", "--permission-mode", "acceptEdits", "--model", model, text]
+    repo = str(root.resolve())
+    secrets = [
+        arg for key in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN") if key in os.environ for arg in ("-e", key)
+    ]
+    image = config.get("sandbox", {}).get("image", "kit-sandbox")
+    return [
+        "docker", "run", "--rm", *secrets,
+        "-v", f"{repo}:{repo}",
+        "-v", f"{repo}/data:{repo}/data:ro",
+        "-v", f"{repo}/data/out:{repo}/data/out",
+        "-w", str(cwd.resolve()), image,
+        *base, "-p", "--dangerously-skip-permissions", "--model", model, text,
+    ]  # fmt: skip
+
+
+def stream(command: list[str], cwd: Path) -> str:
+    """Run a command, echo its output live, and return it. Stops kit on failure."""
+    process = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    assert process.stdout is not None
+    lines: list[str] = []
+    for line in process.stdout:
+        sys.stdout.write(line)
+        lines.append(line)
+    if process.wait() != 0:
+        raise SystemExit(process.returncode)
+    return "".join(lines)
+
+
+def once(root: Path, area: str, issue: str | None) -> int:
+    """A hands-on session in the Area's checkout: planning, or one named Issue."""
+    config = load_config(root)
+    cwd = workspace(root, area)
+    models: dict[str, str] = config.get("models", {})
+    if issue:
+        text = prompt("implement", area, cwd, f"Build Issue {issue}.")
+        command = agent(config, root, cwd, models.get("implement", "sonnet"), text, hands_off=False, local=True)
+    else:
+        command = [*config.get("agent", ["claude"]), "--model", models.get("plan", "opus")]
+    return subprocess.run(command, check=False, cwd=cwd).returncode
+
+
+def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
+    """Hands-off Build: one Issue per pass until COMPLETE, then a fresh review."""
+    config = load_config(root)
+    cwd = workspace(root, area)
+    (root / "data" / "out").mkdir(parents=True, exist_ok=True)
+    models: dict[str, str] = config.get("models", {})
+    for _ in range(max_iterations):
+        build = prompt("implement", area, cwd)
+        output = stream(
+            agent(config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local), cwd
+        )
+        if COMPLETE not in output:
+            continue
+        check = prompt("review", area, cwd, standards(config, cwd))
+        output = stream(agent(config, root, cwd, models.get("review", "opus"), check, hands_off=True, local=local), cwd)
+        if CLEAN in output:
+            print(f"Build done. Next: `kit once {area}` and run /kit:qa.")
+            return 0
+    print(f"Stopped after {max_iterations} iterations. Check progress.txt, then run again.")
+    return 1
+
+
+def close(root: Path, area: str, abandon: bool) -> int:
+    """End a Cycle: tag it as abandoned, or pass the merge Gate and hand it to a PR."""
+    cwd = root / ".worktrees" / area
+    branch = f"cycle/{area}"
+    if abandon:
+        tag = f"abandoned/{area}-{date.today().isoformat()}"
+        git(root, "tag", tag, branch)
+        _free(root, cwd, branch, delete_branch=True)
+        print(f"Abandoned. Kept as tag {tag}; the lesson belongs in CHARTER.md.")
+        return 0
+    config = load_config(root)
+    main = config.get("main", "main")
+    if subprocess.run(["git", "rebase", main], check=False, cwd=cwd).returncode != 0:
+        subprocess.run(["git", "rebase", "--abort"], check=False, cwd=cwd)
+        print(
+            f"Rebase conflict. Run `kit once {area}` and ask the agent to rebase onto {main} with the smallest change."
+        )
+        return 1
+    for name, command in config.get("commands", {}).items():
+        if subprocess.run(command, shell=True, check=False, cwd=cwd).returncode != 0:
+            print(f"Check failed: {name}. Fix it, then close again.")
+            return 1
+    plan = cwd / ".agents" / "cycles" / area
+    if plan.exists():
+        shutil.rmtree(plan)
+        git(cwd, "add", "-A")
+        git(cwd, "commit", "-q", "-m", f"close: {area}")
+    if git(root, "remote"):
+        git(cwd, "push", "-q", "-u", "origin", branch)
+        if shutil.which("gh"):
+            subprocess.run(["gh", "pr", "create", "--fill", "--base", main, "--head", branch], check=False, cwd=cwd)
+        print("Merge with a merge commit once CI passes and you have signed off.")
+    else:
+        print(f"No remote. After sign-off: git merge --no-ff {branch}")
+    _free(root, cwd, branch, delete_branch=False)
+    return 0
+
+
+def _free(root: Path, cwd: Path, branch: str, delete_branch: bool) -> None:
+    if cwd.exists():
+        git(root, "worktree", "remove", "--force", str(cwd))
+    if delete_branch:
+        git(root, "branch", "-D", branch)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="kit", description="Run the Cycle loop.")
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("init", help="add the Product template; never overwrites")
+    hands_on = commands.add_parser("once", help="hands-on session in an Area's checkout")
+    hands_on.add_argument("area")
+    hands_on.add_argument("issue", nargs="?")
+    build = commands.add_parser("run", help="hands-off Build in the sandbox")
+    build.add_argument("area")
+    build.add_argument("--max", type=int, default=None, help="iteration cap (default: kit.json)")
+    build.add_argument("--local", action="store_true", help="skip the sandbox")
+    end = commands.add_parser("close", help="pass the merge Gate, or abandon")
+    end.add_argument("area")
+    end.add_argument("--abandon", action="store_true")
+    args = parser.parse_args(argv)
+
+    root = Path.cwd()
+    if args.command == "init":
+        for path in init(root):
+            print(f"wrote {path.relative_to(root)}")
+        print("Next: open Claude here and run /kit:grill for the Charter.")
+        return 0
+    if args.command == "once":
+        return once(root, args.area, args.issue)
+    if args.command == "run":
+        cap = args.max or load_config(root).get("maxIterations", 20)
+        return run(root, args.area, cap, args.local)
+    return close(root, args.area, args.abandon)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
