@@ -23,7 +23,11 @@ The Kit Owner, and anyone who forks the Kit as their standard.
 
 ## Areas
 
-- **Loop** (owner: Kit Owner): the skills. Next: tune Issue size after the first real Cycle.
-- **CLI** (owner: Kit Owner): init, once, run, close, doctor, and setup.sh. Next: none until a retro asks.
+- **kit** (owner: Kit Owner): the skills, CLI, setup.sh, standards, template and sandbox. Next, in order:
+  1. Close a Cycle and start the next.
+  2. Leave a Build running and trust how it stopped.
+  3. Start a Product that builds first time.
+  4. Sign off QA from recorded results.
+  5. Research or Prototype when the grill asks.
 
 Stay tiny: every line must change what an agent does.
