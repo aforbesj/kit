@@ -136,3 +136,47 @@ def test_close_stops_when_checks_fail(tmp_path: Path) -> None:
 
     assert cli.close(root, "core", abandon=False) == 1
     assert (root / ".worktrees/core").exists()
+
+
+def test_init_creates_named_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    assert cli.main(["init", "new-product"]) == 0
+    assert (tmp_path / "new-product/.agents/kit.json").exists()
+
+
+def test_sandbox_run_passes_git_identity(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    git(root, "config", "user.name", "Ada")
+    git(root, "config", "user.email", "ada@example.com")
+    config = cli.load_config(root)
+
+    command = cli.agent(config, root, root, "sonnet", "go", hands_off=True, local=False)
+
+    assert command[:2] == ["docker", "run"]
+    assert "GIT_COMMITTER_NAME=Ada" in command
+    assert "GIT_AUTHOR_EMAIL=ada@example.com" in command
+
+
+def test_run_without_docker_explains_instead_of_crashing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product(tmp_path)
+    monkeypatch.setattr(cli.shutil, "which", lambda _name: None)
+
+    with pytest.raises(SystemExit, match="--local"):
+        cli.run(root, "core", max_iterations=1, local=False)
+    assert not (root / ".worktrees/core").exists()
+
+
+def test_doctor_fails_only_on_required(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product(tmp_path)
+    git(root, "config", "user.email", "ada@example.com")
+    monkeypatch.setattr(cli, "_ok", lambda _command: False)
+    monkeypatch.setattr(cli.shutil, "which", lambda name: None if name in ("docker", "gh") else f"/bin/{name}")
+    assert cli.doctor(root) == 0
+
+    monkeypatch.setattr(cli.shutil, "which", lambda name: None if name == "claude" else f"/bin/{name}")
+    assert cli.doctor(root) == 1
+
+
+def test_sandbox_image_ships_with_the_package() -> None:
+    assert (cli.SANDBOX / "Dockerfile").is_file()

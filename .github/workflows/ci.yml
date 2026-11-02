@@ -10,3 +10,13 @@ jobs:
       - run: uv run pyright
       - run: uv run ruff check
       - run: uv run pytest -q
+  setup:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: git config --global user.name ci && git config --global user.email ci@example.com
+      - run: ./setup.sh --yes --no-docker
+      - run: ~/.local/bin/kit doctor

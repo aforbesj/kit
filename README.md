@@ -5,25 +5,29 @@ Plan and build any Product with agents, one Cycle at a time. `CONTEXT.md` define
 ## Install once
 
 ```bash
-uv tool install .                         # the kit CLI
-docker build -t kit-sandbox sandbox/      # sandbox for hands-off runs
+git clone <this repo> ~/code/kit && cd ~/code/kit
+./setup.sh                # macOS, Linux or WSL2; safe to rerun
 ```
 
-In Claude Code:
+It installs what is missing (uv, Claude Code, gh, and Docker if you say yes), installs `kit` in editable mode so `git pull` updates it, adds the Claude Code plugin, builds the sandbox, and ends with `kit doctor`. Open a new terminal afterwards so `kit` and `claude` are on PATH.
 
-```
-/plugin marketplace add /path/to/kit
-/plugin install kit@kit
-```
+| System | Docker for hands-off runs |
+| --- | --- |
+| macOS | OrbStack (setup offers it via Homebrew) or Docker Desktop |
+| WSL2 | Docker Desktop for Windows with WSL integration on for your distro |
+| Linux | Docker Engine (setup offers get.docker.com) |
 
-Hands-off runs read `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`).
+No Docker? `./setup.sh --no-docker`, then build with `kit run <area> --local`.
+
+Hands-off runs read `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`. Run `claude setup-token` and export the token in your shell profile; the macOS keychain login does not reach the sandbox.
+
+Something off? `kit doctor` checks the machine and prints the fix for each gap.
 
 ## Start a Product
 
 ```bash
-mkdir my-product && cd my-product
-kit init                 # adds the template; never overwrites a file
-claude                   # then: /kit:grill  (the Charter grill)
+kit init my-product      # creates the folder and adds the template; never overwrites a file
+cd my-product && claude  # then: /kit:grill  (the Charter grill)
 ```
 
 ## Run a Cycle
