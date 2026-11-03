@@ -10,4 +10,4 @@ This Product runs on the Kit. Read only what the task needs:
 - `.agents/cycles/<area>/`: the running Cycle's PRD, Issues and progress.
 - `data/`: Sample data, read-only. Write results only to `data/out/`.
 
-Phases: Charter grill once, then per Cycle: Pick, Research, Prototype, Plan, Split, Build, QA, Close.
+Phases: an optional Brainstorm, then a Charter grill (once at the start, and again when an Area runs out of Features), then per Cycle: Pick, Research, Prototype, Plan, Split, Build, QA, Close.

@@ -7,7 +7,7 @@ One repeatable way to plan and build any product with agents. From largest to sm
 **Product**: One repo: one problem, one set of users, one name.
 _Avoid_: project, codebase, app
 
-**Charter**: The Product's one page: the problem, what's in and out of scope, its Areas and their next Features.
+**Charter**: The Product's one page: the problem, what's in and out of scope, its Areas and their next Features. Only a Charter grill or a retro edits it, never mid-Cycle.
 _Avoid_: vision, roadmap
 
 **Area**: A group of Features that share the same words and data. Every Product starts as one Area; a retro splits it when its Features stop sharing them.
@@ -34,6 +34,12 @@ _Avoid_: test data, fixtures, prod copy
 **Validation**: Running a Feature on Sample data against the PRD's Done when targets. Comes after test cases and before QA.
 _Avoid_: score, eval, UAT
 
+**Brainstorm**: Widening a problem into many directions until the human chooses one to grill. Optional; runs outside any Cycle, from the latest `main`, before a Charter grill. Rejects nothing on record.
+_Avoid_: ideation, discovery, exploration
+
+**Direction**: A broad way to address the problem, with its cost; not yet a design. A Brainstorm widens into many; the human picks one to grill.
+_Avoid_: option, solution, idea
+
 **Gate**: A check work must pass to move on.
 _Avoid_: guardrail, policy
 
@@ -48,4 +54,4 @@ _Avoid_: framework, toolkit
 
 ## Phases
 
-A Product begins with one Charter grill. Each Cycle then runs: Pick, Research, Prototype, Plan, Split, Build, QA, Close. Research and Prototype run only when the grill calls for them.
+The Charter is shaped by an optional Brainstorm, then a Charter grill: once at the start, and again whenever an Area runs out of Features. Each Cycle builds one Feature: Pick, Research, Prototype, Plan, Split, Build, QA, Close. Research and Prototype run only when the grill calls for them.
