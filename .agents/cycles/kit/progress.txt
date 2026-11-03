@@ -7,3 +7,6 @@ Next: 003 edits grill again, which has only 1 line of its 3-line growth budget l
 Issue 003: Grill picks from Top 3
 Cycle grill shows Top 3 and allows any/new pick; Charter grill fills Top 3/Bottom 3 (max 6, counts); template CHARTER.md shows format (grill body unchanged in line count); tests added.
 Next: 004 only needs README Pick/Close rows plus a test; template CHARTER.md and skills are already done.
+Issue 004: README rows and size check
+README Pick row names the Top 3, Close row names re-ranking by Raises; test added; all kit.json commands and the SKILL.md growth check pass.
+Next: all Issues done; the retro seeds counts in CHARTER.md and renames the Feature.

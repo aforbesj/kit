@@ -230,3 +230,12 @@ def test_template_charter_shows_top_3_bottom_3_with_counts() -> None:
     text = (SKILLS.parent.parent / "template/CHARTER.md").read_text()
     assert "Top 3" in text and "Bottom 3" in text
     assert "at most 6" in text and "(raised 2×)" in text
+
+
+def test_readme_pick_and_close_rows_use_ranked_list() -> None:
+    lines = (ROOT / "README.md").read_text().splitlines()
+    pick = next(x for x in lines if x.startswith("| Pick"))
+    close = next(x for x in lines if x.startswith("| Close"))
+    assert "Top 3" in pick
+    assert "Raises" in close
+    assert close.index("After the merge") < close.index("/kit:brainstorm")

@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 mode: hands-off
 priority: polish
 blocked_by: [1, 2, 3]
