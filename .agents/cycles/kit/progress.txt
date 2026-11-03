@@ -33,3 +33,7 @@ Spec passed: all ten Done when lines hold, incl. Issue 007 fix (grill stages CON
 TZ: review shell's offset is +0000 (date +%z), so the +0000 stamps on hands-off commits match the host; not a fault. Docker not available here, so TZ inside kit-sandbox not checked live.
 Appetite: 7 Issues against an Appetite of 6 (one review-found bug); the retro should note it.
 Issues written: none.
+QA round 1 (2026-11-03)
+Appetite asked: past it on Issues (9 against 6) and heading into QA round 2 against 1. Human's answer: new Issues, the PRD was not wrong.
+Issues written: 008 retro measures pick to now (close: does not exist yet at retro), 009 qa commits `qa: <feature>` each round.
+For the retro: hands-off commits read +0000 because the Build ran installed kit-cycle v0.2.0 (TZ fix proven live with docker, not yet in real commits); Issue overrun by a review-found bug triggered no breaker (Split only).
