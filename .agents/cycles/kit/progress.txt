@@ -19,3 +19,8 @@ Next: only 007 is left (uv.lock drift still left uncommitted).
 007: retro removes the finished Feature from CHARTER.md and names the next; README Close step describes merge, kit once, /kit:grill.
 Added retro SKILL.md instruction and a test reading it; CONTEXT.md already said a Cycle ends when its Cycle Branch merges.
 Next: no Issues left (uv.lock drift still left uncommitted).
+review: Sample data none, so no validation run.
+Passed: pyright 0 errors; ruff check clean; pytest 28 passed in 0.87s. Every Done when line has a matching test, and every Issue's Acceptance is met. The diff stays inside the PRD's scope (CHARTER.md comes from the grill commit).
+Failed: `ruff format --check` reports 2 files (src/kit/cli.py:107, tests/test_cli.py:374), against the Python standards.
+Issues written: 008 ruff format clean.
+Notes, not Issues: `close --abandon` with a remote but an unpushed Cycle Branch prints git's "remote ref does not exist" to stderr (the push is not captured) but still returns 0. `close` still rebases onto local main, not origin/main (pre-existing, out of scope).
