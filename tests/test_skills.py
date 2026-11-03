@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 SKILLS = Path(__file__).parent.parent / "src/kit/plugin/skills"
@@ -57,7 +58,7 @@ def test_retro_ranks_features_by_raises() -> None:
         "once per Feature per Cycle",
         "new idea joins at 1×",
         "Remove the finished Feature",
-        "ties to the most recently raised",
+        "ties to the later `last`",
         "cap the list at 6",
         "Top 3 and a Bottom 3",
     ):
@@ -230,13 +231,13 @@ def test_grill_picks_from_top_3_and_charter_grill_fills_tiers() -> None:
     assert "show the Area's Top 3" in text
     assert "any Feature on the list or something new" in text
     assert "a Top 3 and a Bottom 3: at most 6 Features" in text
-    assert "(raised N×)" in text
+    assert "(raised N×, last YYYY-MM-DD)" in text
 
 
 def test_template_charter_shows_top_3_bottom_3_with_counts() -> None:
     text = (SKILLS.parent.parent / "template/CHARTER.md").read_text()
     assert "Top 3" in text and "Bottom 3" in text
-    assert "at most 6" in text and "(raised 2×)" in text
+    assert "at most 6" in text and "(raised 2×, last " in text
 
 
 def test_readme_pick_and_close_rows_use_ranked_list() -> None:
@@ -246,3 +247,13 @@ def test_readme_pick_and_close_rows_use_ranked_list() -> None:
     assert "Top 3" in pick
     assert "Raises" in close
     assert close.index("After the merge") < close.index("/kit:brainstorm")
+
+
+def test_raise_counts_carry_the_date_last_raised() -> None:
+    template = (SKILLS.parent.parent / "template/CHARTER.md").read_text()
+    for name, text in (("retro", _skill("retro")), ("grill", _skill("grill")), ("template", template)):
+        assert ", last " in text, name
+        assert not re.search(r"\(raised (N|\d+)×\)", text), name
+    retro = _skill("retro")
+    assert "set `last` to today" in retro
+    assert "ties to the later `last`" in retro

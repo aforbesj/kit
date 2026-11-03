@@ -23,6 +23,6 @@ When an idea for a Feature comes up, append `raised: <idea>` to `.agents/cycles/
 
 **Done when** the frontier is empty and the human confirms the shared understanding.
 
-Then, for a Charter grill, fill `CHARTER.md`: Problem, Users, In scope, Out of scope, Areas (each with an owner, a Top 3 and a Bottom 3: at most 6 Features, each with `(raised N×)`). One page. For a Cycle grill, stage `CONTEXT.md` and `docs/adr/` if they changed, then always commit with message `pick: <feature>` using `git commit --allow-empty`, even when nothing changed (the start of the Cycle's clock), decide whether Research or Prototype is needed, then tell the human to run `/kit:to-prd`.
+Then, for a Charter grill, fill `CHARTER.md`: Problem, Users, In scope, Out of scope, Areas (each with an owner, a Top 3 and a Bottom 3: at most 6 Features, each with `(raised N×, last YYYY-MM-DD)`). One page. For a Cycle grill, stage `CONTEXT.md` and `docs/adr/` if they changed, then always commit with message `pick: <feature>` using `git commit --allow-empty`, even when nothing changed (the start of the Cycle's clock), decide whether Research or Prototype is needed, then tell the human to run `/kit:to-prd`.
 
 A Charter grill run after a Brainstorm may add Features and widen scope on a filled Charter. Only a Charter grill or a retro edits `CHARTER.md`, never mid-Cycle.

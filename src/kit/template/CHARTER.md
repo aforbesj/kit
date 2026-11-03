@@ -12,7 +12,7 @@ Empty template. Run `/kit:grill` to fill it. One page; after that only a Charter
 
 ## Areas
 
-Each Area has an owner and at most 6 Features, shown as a Top 3 and a Bottom 3, sorted by count (ties to the most recently raised):
+Each Area has an owner and at most 6 Features, shown as a Top 3 and a Bottom 3, sorted by count (ties to the later `last`):
 
-- Top 3: `Feature (raised 2×)`
-- Bottom 3: `Feature (raised 1×)`
+- Top 3: `Feature (raised 2×, last 2026-01-01)`
+- Bottom 3: `Feature (raised 1×, last 2026-01-01)`
