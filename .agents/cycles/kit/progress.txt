@@ -29,3 +29,6 @@ Next: 007 edits retro (+1 line so far) and 008 edits grill (+2 so far); this Kit
 Issue 007: No "next Features" wording left
 Retro lesson row, CONTEXT.md Charter and both CLAUDE.md copies now say "ranked Features"; test added; no SKILL.md line count change.
 Next: 008 edits grill (+2 so far, 1 line of budget left).
+Issue 008: Charter grill raises go to the Charter
+Grill's raised: line now applies to the Cycle grill only; the Charter grill adds ideas to the Area's Features in CHARTER.md at 1×; test added.
+Next: all Issues done; grill is still +2 lines since pick.

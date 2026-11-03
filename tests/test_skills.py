@@ -77,6 +77,12 @@ def test_grill_raises_go_to_the_cycle_progress() -> None:
     assert "create it if missing" in text
 
 
+def test_charter_grill_raises_go_to_the_charter() -> None:
+    text = _skill("grill")
+    assert "In a Cycle grill, when an idea for a Feature comes up" in text
+    assert "In a Charter grill, add it to the Area's Features in `CHARTER.md` at 1×" in text
+
+
 ROOT = Path(__file__).parent.parent
 
 

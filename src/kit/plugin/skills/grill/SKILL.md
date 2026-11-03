@@ -19,7 +19,7 @@ Reach a shared design with the human by asking, never by assuming.
    - A term clashes with `CONTEXT.md`, or a word is fuzzy: call it out and propose one precise term.
 7. Recompute the frontier and repeat until it is empty.
 
-When an idea for a Feature comes up, append `raised: <idea>` to `.agents/cycles/<area>/progress.txt` (create it if missing).
+In a Cycle grill, when an idea for a Feature comes up, append `raised: <idea>` to `.agents/cycles/<area>/progress.txt` (create it if missing). In a Charter grill, add it to the Area's Features in `CHARTER.md` at 1×.
 
 **Done when** the frontier is empty and the human confirms the shared understanding.
 
