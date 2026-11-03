@@ -43,6 +43,9 @@ _Avoid_: option, solution, idea
 **Appetite**: What a Feature or Direction is worth before it is designed, in time, size and QA rounds. A Brainstorm sets it for a Direction, the Cycle grill for a Feature (a default if skipped). The retro measures the Cycle against it. Not a deadline.
 _Avoid_: estimate, budget, deadline
 
+**Raise**: An idea for a Feature coming up during a Cycle. Counted at most once per Cycle; Raises rank an Area's Features.
+_Avoid_: mention, vote
+
 **Gate**: A check work must pass to move on.
 _Avoid_: guardrail, policy
 
