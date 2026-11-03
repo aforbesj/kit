@@ -48,3 +48,6 @@ Review (round 3): pyright 0 errors; ruff check clean; ruff format clean (49 file
 Passed: 012 (discard: now `reset -q --hard && clean -fd`; test stages a new and a modified file, runs discard from the root, the worktree comes back clean and the root file survives), plus every earlier Done when line. Diff stays within the PRD's scope.
 Failed, Issue written: 013 `dirty_files` drops the first character of the first path when that file is tracked and modified but not staged (porcelain ` M path`; `git()` strips the leading space). Reproduced: returns `['racked.txt']` for a modified `tracked.txt`.
 Noted, no Issue: this is QA round 3 against an appetite of 2.
+013: dirty_files keeps the whole path. It now runs `git status --porcelain -z` directly (not via `git()`, which strips the leading space of ` M path`) and skips the old-path entry of renames/copies.
+Test written first (seen failing): `test_dirty_files_keeps_first_character_of_modified_tracked_file`. The run-level Stop reason uses the same function, so it has no separate test.
+All 13 Issues are done; next pass should print COMPLETE.

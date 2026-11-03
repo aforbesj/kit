@@ -747,3 +747,13 @@ def test_sandbox_leaves_host_venv_alone(tmp_path: Path) -> None:
         assert subprocess.run(["docker", "volume", "inspect", volume], capture_output=True, check=False).returncode == 0
     finally:
         subprocess.run(["docker", "volume", "rm", volume], capture_output=True, check=False)
+
+
+def test_dirty_files_keeps_first_character_of_modified_tracked_file(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    tree = cli.workspace(root, "core")
+    (tree / "tracked.txt").write_text("a")
+    git(tree, "add", "-A")
+    git(tree, "commit", "-qm", "base")
+    (tree / "tracked.txt").write_text("b")
+    assert cli.dirty_files(tree) == ["tracked.txt"]

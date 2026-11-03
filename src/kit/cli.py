@@ -338,8 +338,26 @@ def stop(category: str, detail: str) -> None:
 
 def dirty_files(cwd: Path) -> list[str]:
     """Paths `git status` reports as uncommitted (staged, modified or untracked)."""
-    out = git(cwd, "status", "--porcelain", "--untracked-files=all")
-    return [line[3:] for line in out.splitlines() if line.strip()]
+    # Not git(): it strips the leading space of ` M path`, which would eat the path's first character.
+    done = subprocess.run(
+        ["git", "status", "--porcelain", "-z", "--untracked-files=all"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    entries = done.stdout.split("\0")
+    files: list[str] = []
+    i = 0
+    while i < len(entries):
+        entry = entries[i]
+        i += 1
+        if not entry:
+            continue
+        files.append(entry[3:])
+        if entry[0] in "RC":  # renames and copies carry the old path as the next entry
+            i += 1
+    return files
 
 
 def stop_dirty(area: str, files: list[str], where: str) -> None:
