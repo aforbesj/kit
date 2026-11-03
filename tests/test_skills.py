@@ -46,7 +46,27 @@ def test_template_charter_names_charter_grill_and_retro() -> None:
 def test_retro_points_empty_area_to_brainstorm() -> None:
     text = (SKILLS / "retro/SKILL.md").read_text()
     assert "/kit:brainstorm" in text
-    assert "Remove the finished Feature from `CHARTER.md` and name the next one" in text
+    assert "name the next one" not in text
+    assert text.index("after the merge") < text.index("/kit:brainstorm")
+
+
+def test_retro_ranks_features_by_raises() -> None:
+    text = _skill("retro")
+    for phrase in (
+        "`raised:` lines",
+        "once per Feature per Cycle",
+        "new idea joins at 1×",
+        "Remove the finished Feature",
+        "ties to the most recently raised",
+        "cap the list at 6",
+        "Top 3 and a Bottom 3",
+    ):
+        assert phrase in text
+
+
+def test_implement_records_raises() -> None:
+    text = _skill("implement")
+    assert "append `raised: <idea>` to `progress.txt`" in text
 
 
 ROOT = Path(__file__).parent.parent
