@@ -78,3 +78,11 @@ def test_readme_close_row_brainstorms_after_merge() -> None:
     close = next(line for line in text.splitlines() if line.startswith("| Close"))
     assert close.index("After the merge") < close.index("/kit:brainstorm")
     assert close.index("/kit:grill") < close.index("/kit:brainstorm")
+
+
+def test_plugin_description_names_brainstorm_before_grill() -> None:
+    import json
+
+    manifest = json.loads((SKILLS.parent / ".claude-plugin/plugin.json").read_text())
+    desc = manifest["description"]
+    assert desc.index("brainstorm") < desc.index("grill")

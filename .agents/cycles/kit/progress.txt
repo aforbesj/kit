@@ -12,3 +12,5 @@ Review: all 9 Done when lines and every Acceptance box in 001-003 met; diff stay
 Review notes for the retro (not failures): CHARTER.md "In scope" skill list omits brainstorm; plugin.json description omits it; the retro skill says /kit:brainstorm before `kit close`, so a Charter grill could run on the Cycle branch during Close; say whether it belongs before or after the merge.
 004: Retro skill and README Close row now run /kit:brainstorm after kit close and the merge, as the alternative to /kit:grill; order tests added.
 Issue 005 (plugin.json description) is the only one left.
+005: plugin.json description now lists brainstorm ahead of grill; test added to tests/test_skills.py.
+All five Issues are done; the Cycle is ready for QA and Close.
