@@ -10,8 +10,9 @@ Split `.agents/cycles/<area>/prd.md` into **vertical slices**: each Issue cuts t
 
 1. Explore the code the PRD's What changes names.
 2. Draft the list. The first Issue is the **tracer bullet**: the thinnest path from input to output. Later Issues widen it. Any Issue too big for one pass becomes two.
-3. Show the list (title, one line, blockers, mode) and wait for the human's approval or edits.
-4. Write each approved Issue to `.agents/cycles/<area>/issues/NNN-slug.md`:
+3. Compare the list with the `Appetite:` line in the PRD (default `2 hours, 5 Issues, 2 QA rounds` when it has none). If it has more Issues than the Appetite, say so and ask "shrink the split, or was the grill too big?" before writing or committing any Issue.
+4. Show the list (title, one line, blockers, mode) and wait for the human's approval or edits.
+5. Write each approved Issue to `.agents/cycles/<area>/issues/NNN-slug.md`:
 
 ```markdown
 ---
@@ -29,4 +30,4 @@ blocked_by: []        # Issue numbers
 <one command that proves it>
 ```
 
-5. Commit with message `split: <feature>` and tell the human to start Build with `kit run <area>`.
+6. Commit with message `split: <feature>` and tell the human to start Build with `kit run <area>`.

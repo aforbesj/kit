@@ -140,3 +140,11 @@ def test_retro_measures_cycle_against_appetite() -> None:
     assert "Appetite" in text
     for word in ("`pick:`", "`close:`", "`qa:`", "Issue", DEFAULT_APPETITE):
         assert word in text
+
+
+def test_to_issues_stops_before_committing_when_split_passes_appetite() -> None:
+    text = _skill("to-issues")
+    assert "Appetite" in text
+    assert DEFAULT_APPETITE in text
+    assert "shrink the split, or was the grill too big?" in text
+    assert text.index("Appetite") < text.index("Write each approved Issue")

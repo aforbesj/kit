@@ -7,3 +7,6 @@ Remaining todo: 001 (tracer, unblocks 002-004), then 002, 003, 004.
 Issue 001: Appetite runs from grill to retro
 grill asks Appetite first (default named) and commits `pick:`; to-prd has an Appetite line; retro measures against it; 4 tests in tests/test_skills.py.
 Todo: 002, 003 (blocked only by 001, now free), then 004 (brainstorm, keep body <= 25 lines).
+Issue 002: Split stops past the Appetite
+to-issues step 3 compares the split with the PRD Appetite (default named) and asks before writing; test in tests/test_skills.py.
+Todo: 003 (qa), then 004 (brainstorm, body <= 25 lines).
