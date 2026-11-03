@@ -373,7 +373,7 @@ def stop_dirty(area: str, files: list[str], where: str) -> None:
     print(f'keep:    git -C {tree} add -A && git -C {tree} commit -m "<n>: <title>"')
     print(f"discard: git -C {tree} reset -q --hard && git -C {tree} clean -fd")
     print(f"then: kit run {area}")
-    stop("dirty tree", f"{where} left {len(files)} uncommitted: {', '.join(files)}")
+    stop("dirty tree", f"{where} {len(files)} uncommitted: {', '.join(files)}")
 
 
 def _issues(cwd: Path, area: str) -> list[Path]:
@@ -406,7 +406,7 @@ def once(root: Path, area: str, issue: str | None) -> int:
         command = [*config.get("agent", ["claude"]), *plugin_args(root, cwd), "--model", models.get("plan", "opus")]
     code = subprocess.run(command, check=False, cwd=cwd).returncode
     if files := dirty_files(cwd):
-        stop_dirty(area, files, "once")
+        stop_dirty(area, files, "after once,")
     return code
 
 
@@ -420,7 +420,7 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
             sandbox(image_name(config))
         cwd = workspace(root, area)
         if files := dirty_files(cwd):
-            stop_dirty(area, files, "start")
+            stop_dirty(area, files, "before start,")
             return 1
         (root / "data" / "out").mkdir(parents=True, exist_ok=True)
         models: dict[str, str] = config.get("models", {})
@@ -435,7 +435,7 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
                 stop("agent failed", f"implement exited {code}: {_last_line(output)}")
                 return code
             if files := dirty_files(cwd):
-                stop_dirty(area, files, f"pass {passes} (implement)")
+                stop_dirty(area, files, f"pass {passes} (implement) left")
                 return 1
             if COMPLETE not in output:
                 continue
@@ -447,7 +447,7 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
                 stop("agent failed", f"review exited {code}: {_last_line(output)}")
                 return code
             if files := dirty_files(cwd):
-                stop_dirty(area, files, f"pass {passes} (review)")
+                stop_dirty(area, files, f"pass {passes} (review) left")
                 return 1
             if CLEAN in output:
                 print(f"Build done. Next: `kit once {area}` and run /kit:qa.")

@@ -537,7 +537,7 @@ def test_run_stops_when_a_pass_leaves_files(tmp_path: Path, capsys: pytest.Captu
     assert "pass 1" in out and "stray.txt" in out
     assert "keep:" in out and "discard:" in out and "then: kit run core" in out
     assert (tmp_path / "dirty.n").read_text() == "1"
-    assert out.splitlines()[-1].startswith("Stop reason: dirty tree: ")
+    assert out.splitlines()[-1].startswith("Stop reason: dirty tree: pass 1 (implement) left 1 uncommitted: ")
     keep = next(line for line in out.splitlines() if line.startswith("keep:"))
     discard = next(line for line in out.splitlines() if line.startswith("discard:"))
     assert ".worktrees/core" in keep and ".worktrees/core" in discard
@@ -575,7 +575,7 @@ def test_run_refuses_a_dirty_tree_at_start(tmp_path: Path, capsys: pytest.Captur
 
     out = capsys.readouterr().out
     assert "stray.txt" in out and "keep:" in out and "discard:" in out and "then: kit run core" in out
-    assert out.splitlines()[-1].startswith("Stop reason: dirty tree: ")
+    assert out.splitlines()[-1] == "Stop reason: dirty tree: before start, 1 uncommitted: stray.txt"
     assert not (tmp_path / "calls.log").exists()
 
 
@@ -592,7 +592,7 @@ def test_once_warns_on_dirty_tree_and_keeps_exit_code(tmp_path: Path, capsys: py
 
     out = capsys.readouterr().out
     assert "dirty tree:" in out and "stray.txt" in out
-    assert out.splitlines()[-1].startswith("Stop reason: dirty tree: ")
+    assert out.splitlines()[-1] == "Stop reason: dirty tree: after once, 1 uncommitted: stray.txt"
 
 
 def test_no_commit_by_run_or_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

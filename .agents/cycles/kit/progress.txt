@@ -59,3 +59,6 @@ raised: Docker-gated tests run before Close, on a host with Docker; a test skipp
 014: Sandbox venv volume writable. Dockerfile now creates /home/kit/venv after `USER kit`; `sandbox()` runs `docker run --rm <image> test -d /home/kit/venv` on an existing image and rebuilds it when that fails.
 Docker is not installed here, so the touch-in-new-volume Verify and `test_sandbox_leaves_host_venv_alone` are still unrun; the new rebuild test fakes `_ok`/`subprocess.run`. Treat both as unverified.
 Remaining todo: 015 (start gate wording). Test written after the code.
+015: Start gate wording. `stop_dirty`'s `where` now carries its own verb: "before start," and "after once," give `before start, N uncommitted: ...`; pass messages pass "pass N (phase) left".
+Tests now assert the exact Stop reason lines for start, once and after-pass (written after the code, not seen failing). Docker-gated tests (011, 014) remain unrun here.
+All 15 Issues are done; next pass should print COMPLETE.
