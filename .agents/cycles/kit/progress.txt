@@ -23,3 +23,7 @@ Tests written alongside the code; they monkeypatch `cli.metadata.version`.
 006: Close removes volume. `_free` in cli.py runs `docker volume rm <venv_volume(root, cwd)>` (check=False, output captured, OSError swallowed) on both merge and abandon paths.
 All 8 Issues are now done; next pass should print COMPLETE.
 Test written alongside the code; it fakes docker as missing, so only the command shape is checked, and the monkeypatch of `cli.checks` is a no-op guard (raising=False).
+Review (round 1): pyright 0 errors; ruff check and ruff format clean (45 files); pytest 94 passed in 1.49s. No Sample data (PRD: none), so no validation run.
+Passed: Stop reasons for complete/cap/agent failed/dirty/interrupted in-process; dirty gate at start, after each pass and in once; no git add/commit spy; version warning in doctor/once/run; volume name and UV_PROJECT_ENVIRONMENT; close removes volume; --plugin-dir and hand-off only for kit-cycle. Diff stays within the PRD's What changes (cli.py, tests, plus cycle docs/ADRs/CONTEXT).
+Failed, Issues written: 009 Ctrl-C under hand-off (and during sandbox/workspace) ends with a traceback, not the Stop reason (reproduced: exit 130, KeyboardInterrupt traceback after the child's Stop reason). 010 keep:/discard: lines name no directory, so pasting them from the root commits on / cleans the root checkout. 011 Done when "host .venv/bin/python unchanged after sandboxed run (test)" has no test.
+raised: `kit status <area>` prints the last Stop reason and the dirty files without starting an agent.
