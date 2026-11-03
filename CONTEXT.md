@@ -16,7 +16,7 @@ _Avoid_: context, module, domain
 **Feature**: Something a user can do with the Product. Belongs to one Area.
 _Avoid_: capability, function, epic
 
-**Cycle**: Building or changing one Feature, from Pick to Close. One per Area at a time.
+**Cycle**: Building or changing one Feature, from Pick to Close. Ends when its Cycle Branch merges. One per Area at a time.
 _Avoid_: sprint, iteration
 
 **Cycle Branch**: The Area's one branch for the running Cycle, `cycle/<area>`, merged once after QA.
