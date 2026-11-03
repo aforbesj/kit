@@ -511,3 +511,30 @@ def test_self_host_hands_off_to_the_worktree_cli(tmp_path: Path, monkeypatch: py
     monkeypatch.delenv("KIT_SELF")
     (root / "pyproject.toml").write_text('[project]\nname = "other"\n')
     assert cli.hand_off(root, "core", []) is None
+
+
+DIRTY_AGENT = """
+import pathlib
+pathlib.Path("stray.txt").write_text("x")
+with open(pathlib.Path(__file__).with_name("dirty.n"), "a") as f:
+    f.write("1")
+"""
+
+
+def test_run_stops_when_a_pass_leaves_files(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    fake = tmp_path / "dirty_agent.py"
+    fake.write_text(DIRTY_AGENT)
+    config = json.loads((root / ".agents/kit.json").read_text())
+    config["agent"] = [sys.executable, str(fake)]
+    (root / ".agents/kit.json").write_text(json.dumps(config))
+    git(root, "commit", "-qam", "dirty agent")
+
+    assert cli.run(root, "core", max_iterations=5, local=True) != 0
+
+    out = capsys.readouterr().out
+    assert out.count("Stop reason:") == 1
+    assert "pass 1" in out and "stray.txt" in out
+    assert "keep:" in out and "discard:" in out and "then: kit run core" in out
+    assert (tmp_path / "dirty.n").read_text() == "1"
+    assert out.splitlines()[-1].startswith("Stop reason: dirty tree: ")

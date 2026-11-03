@@ -302,6 +302,23 @@ def stop(category: str, detail: str) -> None:
     print(f"Stop reason: {category}: {detail or 'no detail'}")
 
 
+def dirty_files(cwd: Path) -> list[str]:
+    """Paths `git status` reports as uncommitted (staged, modified or untracked)."""
+    out = git(cwd, "status", "--porcelain", "--untracked-files=all")
+    return [line[3:] for line in out.splitlines() if line.strip()]
+
+
+def stop_dirty(area: str, files: list[str], where: str) -> None:
+    """Explain a dirty tree: the files and the commands to keep or discard them. Never touches git."""
+    print("dirty tree:")
+    for name in files:
+        print(f"  {name}")
+    print('keep:    git add -A && git commit -m "<n>: <title>"')
+    print("discard: git restore . && git clean -fd")
+    print(f"then: kit run {area}")
+    stop("dirty tree", f"{where} left {len(files)} uncommitted: {', '.join(files)}")
+
+
 def _issues(cwd: Path, area: str) -> list[Path]:
     return sorted((cwd / ".agents" / "cycles" / area / "issues").glob("*.md"))
 
@@ -341,7 +358,9 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
     (root / "data" / "out").mkdir(parents=True, exist_ok=True)
     models: dict[str, str] = config.get("models", {})
     try:
+        passes = 0
         for _ in range(max_iterations):
+            passes += 1
             build = prompt("implement", area, cwd)
             output, code = stream(
                 agent(config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local), cwd
@@ -349,6 +368,9 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
             if code != 0:
                 stop("agent failed", f"implement exited {code}: {_last_line(output)}")
                 return code
+            if files := dirty_files(cwd):
+                stop_dirty(area, files, f"pass {passes} (implement)")
+                return 1
             if COMPLETE not in output:
                 continue
             check = prompt("review", area, cwd, standards(config, cwd))
@@ -358,6 +380,9 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
             if code != 0:
                 stop("agent failed", f"review exited {code}: {_last_line(output)}")
                 return code
+            if files := dirty_files(cwd):
+                stop_dirty(area, files, f"pass {passes} (review)")
+                return 1
             if CLEAN in output:
                 print(f"Build done. Next: `kit once {area}` and run /kit:qa.")
                 stop("complete", f"{_done(cwd, area)} Issues done, review clean")
