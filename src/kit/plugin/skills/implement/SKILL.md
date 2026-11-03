@@ -17,4 +17,6 @@ Build **one** Issue from `.agents/cycles/<area>/issues/`, then stop.
 7. Run every command in `.agents/kit.json` `commands` until all pass, plus the Issue's Verify.
 8. Set `status: done`, append three lines to `progress.txt` (Issue, what changed, anything the next pass must know), and commit with message `<issue-number>: <title>`.
 
+When an idea for a Feature comes up, append `raised: <idea>` to `progress.txt`.
+
 **Done when** all commands pass and the commit exists. One Issue per pass.

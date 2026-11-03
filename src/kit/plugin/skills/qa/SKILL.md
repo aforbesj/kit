@@ -14,4 +14,6 @@ The human judges; you prepare and record.
 4. Commit once per round, after `qa.md` and any new Issues are written: `git commit -m "qa: <feature>"` (add `--allow-empty` if nothing changed), so each round leaves exactly one `qa:` commit for the breaker and the retro to count.
 5. If the human finds the PRD itself was wrong, stop: the Cycle is abandoned. Tell them to run `/kit:retro`, then `kit close <area> --abandon`.
 
+When an idea for a Feature comes up, append `raised: <idea>` to `progress.txt`.
+
 **Done when** the human signs off (then: `/kit:retro`, then `kit close <area>`) or new Issues exist (then: `kit run <area>`).

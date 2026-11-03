@@ -390,4 +390,5 @@ def test_close_prints_next_steps_without_remote(tmp_path: Path, capsys: pytest.C
 
 def test_retro_skill_removes_finished_feature_from_charter() -> None:
     text = (Path(__file__).parent.parent / "src/kit/plugin/skills/retro/SKILL.md").read_text()
-    assert "Remove the finished Feature from `CHARTER.md` and name the next one" in text
+    assert "Remove the finished Feature" in text
+    assert "name the next one" not in text

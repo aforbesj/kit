@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 SKILLS = Path(__file__).parent.parent / "src/kit/plugin/skills"
@@ -46,7 +47,40 @@ def test_template_charter_names_charter_grill_and_retro() -> None:
 def test_retro_points_empty_area_to_brainstorm() -> None:
     text = (SKILLS / "retro/SKILL.md").read_text()
     assert "/kit:brainstorm" in text
-    assert "Remove the finished Feature from `CHARTER.md` and name the next one" in text
+    assert "name the next one" not in text
+    assert text.index("after the merge") < text.index("/kit:brainstorm")
+
+
+def test_retro_ranks_features_by_raises() -> None:
+    text = _skill("retro")
+    for phrase in (
+        "`raised:` lines",
+        "once per Feature per Cycle",
+        "new idea joins at 1×",
+        "Remove the finished Feature",
+        "ties to the later `last`",
+        "cap the list at 6",
+        "Top 3 and a Bottom 3",
+    ):
+        assert phrase in text
+
+
+def test_skills_record_raises() -> None:
+    for name in ("grill", "implement", "review", "qa"):
+        target = "`.agents/cycles/<area>/progress.txt`" if name == "grill" else "`progress.txt`"
+        assert f"append `raised: <idea>` to {target}" in _skill(name), name
+
+
+def test_grill_raises_go_to_the_cycle_progress() -> None:
+    text = _skill("grill")
+    assert "append `raised: <idea>` to `.agents/cycles/<area>/progress.txt`" in text
+    assert "create it if missing" in text
+
+
+def test_charter_grill_raises_go_to_the_charter() -> None:
+    text = _skill("grill")
+    assert "In a Cycle grill, when an idea for a Feature comes up" in text
+    assert "In a Charter grill, add it to the Area's Features in `CHARTER.md` at 1×" in text
 
 
 ROOT = Path(__file__).parent.parent
@@ -196,3 +230,46 @@ def test_brainstorm_last_line_restates_direction_appetite_and_words() -> None:
     last = _body(_brainstorm())[-1]
     assert "Direction" in last and "Appetite" in last and "words" in last
     assert "/kit:grill" in last
+
+
+def test_grill_picks_from_top_3_and_charter_grill_fills_tiers() -> None:
+    text = _skill("grill")
+    assert "show the Area's Top 3" in text
+    assert "any Feature on the list or something new" in text
+    assert "a Top 3 and a Bottom 3: at most 6 Features" in text
+    assert "(raised N×, last YYYY-MM-DD)" in text
+
+
+def test_template_charter_shows_top_3_bottom_3_with_counts() -> None:
+    text = (SKILLS.parent.parent / "template/CHARTER.md").read_text()
+    assert "Top 3" in text and "Bottom 3" in text
+    assert "at most 6" in text and "(raised 2×, last " in text
+
+
+def test_readme_pick_and_close_rows_use_ranked_list() -> None:
+    lines = (ROOT / "README.md").read_text().splitlines()
+    pick = next(x for x in lines if x.startswith("| Pick"))
+    close = next(x for x in lines if x.startswith("| Close"))
+    assert "Top 3" in pick
+    assert "Raises" in close
+    assert close.index("After the merge") < close.index("/kit:brainstorm")
+
+
+def test_raise_counts_carry_the_date_last_raised() -> None:
+    template = (SKILLS.parent.parent / "template/CHARTER.md").read_text()
+    for name, text in (("retro", _skill("retro")), ("grill", _skill("grill")), ("template", template)):
+        assert ", last " in text, name
+        assert not re.search(r"\(raised (N|\d+)×\)", text), name
+    retro = _skill("retro")
+    assert "set `last` to today" in retro
+    assert "ties to the later `last`" in retro
+
+
+def test_no_next_features_wording_left() -> None:
+    for p in (
+        SKILLS / "retro/SKILL.md",
+        ROOT / "CONTEXT.md",
+        ROOT / "CLAUDE.md",
+        ROOT / "src/kit/template/CLAUDE.md",
+    ):
+        assert "next Features" not in p.read_text(), p

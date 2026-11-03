@@ -2,7 +2,7 @@
 
 This Product runs on the Kit. Read only what the task needs:
 
-- `CHARTER.md`: what this Product is for, its Areas and next Features.
+- `CHARTER.md`: what this Product is for, its Areas and their ranked Features.
 - `CONTEXT.md`: the vocabulary. Use these words in code and prose.
 - `docs/adr/`: decisions that are hard to reverse.
 - `.agents/kit.json`: the commands that prove code works.

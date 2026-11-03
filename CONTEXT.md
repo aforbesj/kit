@@ -7,7 +7,7 @@ One repeatable way to plan and build any product with agents. From largest to sm
 **Product**: One repo: one problem, one set of users, one name.
 _Avoid_: project, codebase, app
 
-**Charter**: The Product's one page: the problem, what's in and out of scope, its Areas and their next Features. Only a Charter grill or a retro edits it, never mid-Cycle.
+**Charter**: The Product's one page: the problem, what's in and out of scope, its Areas and their ranked Features. Only a Charter grill or a retro edits it, never mid-Cycle.
 _Avoid_: vision, roadmap
 
 **Area**: A group of Features that share the same words and data. Every Product starts as one Area; a retro splits it when its Features stop sharing them.
@@ -42,6 +42,9 @@ _Avoid_: option, solution, idea
 
 **Appetite**: What a Feature or Direction is worth before it is designed, in time, size and QA rounds. A Brainstorm sets it for a Direction, the Cycle grill for a Feature (a default if skipped). The retro measures the Cycle against it. Not a deadline.
 _Avoid_: estimate, budget, deadline
+
+**Raise**: An idea for a Feature coming up during a Cycle. Counted at most once per Cycle; Raises rank an Area's Features.
+_Avoid_: mention, vote
 
 **Gate**: A check work must pass to move on.
 _Avoid_: guardrail, policy
