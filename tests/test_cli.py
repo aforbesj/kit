@@ -192,3 +192,49 @@ def test_close_refuses_dirty_checkout(tmp_path: Path, abandon: bool) -> None:
     assert (ws / "scratch.txt").read_text() == "unsaved"
     assert git(root, "branch", "--list", "cycle/core")
     assert not git(root, "tag", "--list", "abandoned/*")
+
+
+def with_origin(tmp_path: Path, root: Path) -> Path:
+    origin = tmp_path / "origin.git"
+    git(tmp_path, "init", "-q", "--bare", str(origin))
+    git(root, "remote", "add", "origin", str(origin))
+    git(root, "push", "-q", "origin", "HEAD:main")
+    return origin
+
+
+def test_workspace_branches_from_latest_origin_main(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    other = tmp_path / "other"
+    git(tmp_path, "clone", "-q", "-b", "main", str(origin), str(other))
+    (other / "new.txt").write_text("x")
+    git(other, "add", "-A")
+    git(other, "commit", "-m", "ahead")
+    git(other, "push", "-q", "origin", "HEAD:main")
+
+    ws = cli.workspace(root, "core")
+
+    assert git(ws, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
+
+
+def test_workspace_without_remote_warns_and_uses_local_main(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = product(tmp_path)
+
+    ws = cli.workspace(root, "core")
+
+    assert git(ws, "rev-parse", "HEAD") == git(root, "rev-parse", "main")
+    assert "warning" in capsys.readouterr().out.lower()
+
+
+def test_workspace_with_failing_fetch_warns_and_uses_local_main(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = product(tmp_path)
+    git(root, "remote", "add", "origin", str(tmp_path / "missing.git"))
+
+    ws = cli.workspace(root, "core")
+
+    assert git(ws, "rev-parse", "HEAD") == git(root, "rev-parse", "main")
+    assert "warning" in capsys.readouterr().out.lower()

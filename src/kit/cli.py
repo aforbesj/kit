@@ -74,8 +74,21 @@ def workspace(root: Path, area: str) -> Path:
         if known.returncode == 0:
             git(root, "worktree", "add", "-q", str(path), branch)
         else:
-            git(root, "worktree", "add", "-q", "-b", branch, str(path))
+            git(root, "worktree", "add", "-q", "-b", branch, str(path), _latest_main(root))
     return path
+
+
+def _latest_main(root: Path) -> str:
+    """The ref a new Cycle Branch starts from: origin/main after a fetch, else local main."""
+    main = load_config(root).get("main", "main") if (root / ".agents" / "kit.json").exists() else "main"
+    if not git(root, "remote"):
+        print(f"Warning: no remote; starting from local {main}.")
+        return main
+    fetched = subprocess.run(["git", "fetch", "-q", "origin"], check=False, cwd=root, capture_output=True)
+    if fetched.returncode != 0:
+        print(f"Warning: fetch from origin failed; starting from local {main}.")
+        return main
+    return f"origin/{main}"
 
 
 def prompt(skill: str, area: str, cwd: Path, extra: str = "") -> str:
