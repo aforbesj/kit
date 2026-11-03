@@ -665,3 +665,31 @@ def test_close_removes_venv_volume(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     cli.close(root, "core", abandon=abandon)
 
     assert ["docker", "volume", "rm", "kit-venv-product-core"] in seen
+
+
+def test_interrupt_in_hand_off_returns_130_without_traceback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product(tmp_path)
+    (root / "pyproject.toml").write_text('[project]\nname = "kit-cycle"\n')
+    monkeypatch.chdir(root)
+    monkeypatch.delenv("KIT_SELF", raising=False)
+    monkeypatch.setattr(cli, "workspace", lambda r, a: root / "wt")
+
+    def interrupted(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli.subprocess, "run", interrupted)
+    assert cli.main(["run", "core", "--local"]) == 130
+
+
+@pytest.mark.parametrize("step", ["sandbox", "workspace"])
+def test_interrupt_before_the_pass_loop_prints_stop_reason(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], step: str
+) -> None:
+    root = product(tmp_path)
+
+    def interrupted(*args: Any, **kwargs: Any) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, step, interrupted)
+    assert cli.run(root, "core", max_iterations=2, local=step == "workspace") == 130
+    assert capsys.readouterr().out.splitlines()[-1] == "Stop reason: interrupted: Ctrl-C"

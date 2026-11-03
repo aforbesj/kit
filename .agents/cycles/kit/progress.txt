@@ -27,3 +27,6 @@ Review (round 1): pyright 0 errors; ruff check and ruff format clean (45 files);
 Passed: Stop reasons for complete/cap/agent failed/dirty/interrupted in-process; dirty gate at start, after each pass and in once; no git add/commit spy; version warning in doctor/once/run; volume name and UV_PROJECT_ENVIRONMENT; close removes volume; --plugin-dir and hand-off only for kit-cycle. Diff stays within the PRD's What changes (cli.py, tests, plus cycle docs/ADRs/CONTEXT).
 Failed, Issues written: 009 Ctrl-C under hand-off (and during sandbox/workspace) ends with a traceback, not the Stop reason (reproduced: exit 130, KeyboardInterrupt traceback after the child's Stop reason). 010 keep:/discard: lines name no directory, so pasting them from the root commits on / cleans the root checkout. 011 Done when "host .venv/bin/python unchanged after sandboxed run (test)" has no test.
 raised: `kit status <area>` prints the last Stop reason and the dirty files without starting an agent.
+009: Ctrl-C ends with the Stop reason. `run` now wraps sandbox, workspace and the start gate in the same KeyboardInterrupt handler; `hand_off` returns 130 on Ctrl-C (child already printed the Stop reason; parent prints one only if interrupted in workspace()).
+Remaining todo: 010, 011.
+Tests written alongside the code, not strictly first.

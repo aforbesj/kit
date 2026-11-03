@@ -198,9 +198,16 @@ def hand_off(root: Path, area: str, argv: list[str]) -> int | None:
     """
     if os.environ.get("KIT_SELF") == "1" or not is_kit(root):
         return None
-    cwd = workspace(root, area)
+    try:
+        cwd = workspace(root, area)
+    except KeyboardInterrupt:
+        stop("interrupted", "Ctrl-C")
+        return 130
     command = ["uv", "run", "--project", str(cwd), "kit", *argv]
-    return subprocess.run(command, check=False, cwd=root, env={**os.environ, "KIT_SELF": "1"}).returncode
+    try:
+        return subprocess.run(command, check=False, cwd=root, env={**os.environ, "KIT_SELF": "1"}).returncode
+    except KeyboardInterrupt:
+        return 130  # the child got the same Ctrl-C and printed the Stop reason
 
 
 def venv_volume(root: Path, cwd: Path) -> str:
@@ -384,15 +391,16 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
     """Hands-off Build: one Issue per pass until COMPLETE, then a fresh review."""
     config = load_config(root)
     warn_version(root)
-    if not local:
-        sandbox(image_name(config))
-    cwd = workspace(root, area)
-    if files := dirty_files(cwd):
-        stop_dirty(area, files, "start")
-        return 1
-    (root / "data" / "out").mkdir(parents=True, exist_ok=True)
-    models: dict[str, str] = config.get("models", {})
+    cwd = root
     try:
+        if not local:
+            sandbox(image_name(config))
+        cwd = workspace(root, area)
+        if files := dirty_files(cwd):
+            stop_dirty(area, files, "start")
+            return 1
+        (root / "data" / "out").mkdir(parents=True, exist_ok=True)
+        models: dict[str, str] = config.get("models", {})
         passes = 0
         for _ in range(max_iterations):
             passes += 1
