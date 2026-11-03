@@ -19,6 +19,8 @@ Reach a shared design with the human by asking, never by assuming.
    - A term clashes with `CONTEXT.md`, or a word is fuzzy: call it out and propose one precise term.
 7. Recompute the frontier and repeat until it is empty.
 
+When an idea for a Feature comes up, append `raised: <idea>` to `progress.txt`.
+
 **Done when** the frontier is empty and the human confirms the shared understanding.
 
 Then, for a Charter grill, fill `CHARTER.md`: Problem, Users, In scope, Out of scope, Areas (each with an owner and its next Features). One page. For a Cycle grill, stage `CONTEXT.md` and `docs/adr/` if they changed, then always commit with message `pick: <feature>` using `git commit --allow-empty`, even when nothing changed (the start of the Cycle's clock), decide whether Research or Prototype is needed, then tell the human to run `/kit:to-prd`.

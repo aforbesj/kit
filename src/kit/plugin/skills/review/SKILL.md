@@ -16,4 +16,6 @@ You did not write this code. Check it with fresh eyes.
 4. For each failure, write a new Issue (`priority: bug`, `mode: hands-off`) whose Acceptance starts with a failing test that reproduces it.
 5. Append a summary to `progress.txt`: what passed, the measured numbers, the Issues written. Commit.
 
+When an idea for a Feature comes up, append `raised: <idea>` to `progress.txt`.
+
 If you wrote no Issues, print `<promise>CLEAN</promise>`.

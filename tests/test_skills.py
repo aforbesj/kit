@@ -64,9 +64,9 @@ def test_retro_ranks_features_by_raises() -> None:
         assert phrase in text
 
 
-def test_implement_records_raises() -> None:
-    text = _skill("implement")
-    assert "append `raised: <idea>` to `progress.txt`" in text
+def test_skills_record_raises() -> None:
+    for name in ("grill", "implement", "review", "qa"):
+        assert "append `raised: <idea>` to `progress.txt`" in _skill(name), name
 
 
 ROOT = Path(__file__).parent.parent

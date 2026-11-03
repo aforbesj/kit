@@ -1,3 +1,6 @@
 Issue 001: Retro ranks Features by Raises
 Changed retro to re-rank by raised: lines (cap 6, Top 3/Bottom 3); implement appends raised: lines; tests in test_skills.py and test_cli.py updated.
 Next: 002 must reuse the implement wording "append `raised: <idea>` to `progress.txt`" in grill, review, qa (each may grow at most 3 lines).
+Issue 002: Grill, review, qa record Raises
+Added the same raised: sentence to grill, review, qa (+2 lines each); one test now covers all 4 skills.
+Next: 003 edits grill again, which has only 1 line of its 3-line growth budget left.
