@@ -32,3 +32,6 @@ Next: 008 edits grill (+2 so far, 1 line of budget left).
 Issue 008: Charter grill raises go to the Charter
 Grill's raised: line now applies to the Cycle grill only; the Charter grill adds ideas to the Area's Features in CHARTER.md at 1×; test added.
 Next: all Issues done; grill is still +2 lines since pick.
+Review 4: Rank the next Features by how often they're raised
+Passed: pyright 0 errors, ruff check clean, ruff format 44 files clean, pytest 72 passed (0.95s). SKILL.md growth since pick 7cd619f: grill +2, implement +2, qa +2, review +2, retro +1, others 0 (all ≤3). Done when lines 1-8 met; 006 (`(raised N×, last YYYY-MM-DD)`, ties to later `last`), 007 (no "next Features" in retro, CONTEXT.md, both CLAUDE.md) and 008 (Cycle grill writes `raised:` to progress.txt, Charter grill adds to CHARTER.md at 1×) hold. Out of scope respected: no CLI change, this Kit's CHARTER.md untouched. Sample data: none, so no validation run.
+Issues written: none.
