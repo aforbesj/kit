@@ -44,3 +44,7 @@ raised: Stop reason `not started` for sandbox/Docker failures, so every `kit run
 012: Discard clears staged changes. `stop_dirty`'s discard: line is now `git -C <tree> reset -q --hard && git -C <tree> clean -fd`, so staged work from a failed commit is dropped too.
 Test written first (`test_discard_clears_staged_changes`, seen failing): stages a new file and a tracked change, runs the printed discard: from the root, checks the worktree is clean and a root file survives.
 All 12 Issues are done; next pass should print COMPLETE.
+Review (round 3): pyright 0 errors; ruff check clean; ruff format clean (49 files); pytest 98 passed, 1 skipped in 1.57s. No Sample data (PRD: none), so no validation run. No Docker here, so the 011 host-venv test is still skipped and unverified.
+Passed: 012 (discard: now `reset -q --hard && clean -fd`; test stages a new and a modified file, runs discard from the root, the worktree comes back clean and the root file survives), plus every earlier Done when line. Diff stays within the PRD's scope.
+Failed, Issue written: 013 `dirty_files` drops the first character of the first path when that file is tracked and modified but not staged (porcelain ` M path`; `git()` strips the leading space). Reproduced: returns `['racked.txt']` for a modified `tracked.txt`.
+Noted, no Issue: this is QA round 3 against an appetite of 2.
