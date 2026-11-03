@@ -27,3 +27,5 @@ Review 3: all 9 Done when lines and every Acceptance box in 001-006 met; marketp
 007: plugin.json and marketplace.json descriptions now read "Brainstorm, then the Cycle loop: grill, ..."; plugin description test is case-insensitive and rejects "loop: brainstorm".
 Both descriptions must stay identical (a test compares them).
 All seven Issues are done; the Cycle is ready for QA and Close.
+Review 4: Sample data none, so no Validation. pyright 0 errors, ruff check and ruff format clean (42 files), pytest 43 passed in 0.90s. Brainstorm body is 13 lines (cap 25).
+Review 4: all 9 Done when lines and every Acceptance box in 001-007 met; both descriptions read "Brainstorm, then the Cycle loop: grill, ..." and match; no stale "only a retro edits it" outside the ADR's quote and the test. Diff stays inside the PRD's What changes plus QA bug Issues 004-007. No Issues written.
