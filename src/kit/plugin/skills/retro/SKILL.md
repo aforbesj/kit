@@ -13,7 +13,7 @@ Read `progress.txt`, `qa.md` and the Cycle's commits. Measure the Cycle against 
 | A new or sharper term | `CONTEXT.md` |
 | A hard-to-reverse decision | `docs/adr/` |
 | A project-specific coding rule | `.agents/standards.md` |
-| Scope, Areas, next Features | `CHARTER.md` (only a Charter grill or the retro edits it) |
+| Scope, Areas, ranked Features | `CHARTER.md` (only a Charter grill or the retro edits it) |
 | An Area whose Features stopped sharing words | `CHARTER.md`: split the Area |
 | A process problem with the Kit | Listed in your final message, for the Kit's own Charter |
 

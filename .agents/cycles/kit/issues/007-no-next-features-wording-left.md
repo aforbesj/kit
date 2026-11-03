@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 mode: hands-off
 priority: bug
 blocked_by: []

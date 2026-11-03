@@ -257,3 +257,13 @@ def test_raise_counts_carry_the_date_last_raised() -> None:
     retro = _skill("retro")
     assert "set `last` to today" in retro
     assert "ties to the later `last`" in retro
+
+
+def test_no_next_features_wording_left() -> None:
+    for p in (
+        SKILLS / "retro/SKILL.md",
+        ROOT / "CONTEXT.md",
+        ROOT / "CLAUDE.md",
+        ROOT / "src/kit/template/CLAUDE.md",
+    ):
+        assert "next Features" not in p.read_text(), p

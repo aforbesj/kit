@@ -7,7 +7,7 @@ One repeatable way to plan and build any product with agents. From largest to sm
 **Product**: One repo: one problem, one set of users, one name.
 _Avoid_: project, codebase, app
 
-**Charter**: The Product's one page: the problem, what's in and out of scope, its Areas and their next Features. Only a Charter grill or a retro edits it, never mid-Cycle.
+**Charter**: The Product's one page: the problem, what's in and out of scope, its Areas and their ranked Features. Only a Charter grill or a retro edits it, never mid-Cycle.
 _Avoid_: vision, roadmap
 
 **Area**: A group of Features that share the same words and data. Every Product starts as one Area; a retro splits it when its Features stop sharing them.

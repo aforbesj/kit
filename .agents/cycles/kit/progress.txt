@@ -26,3 +26,6 @@ QA round 1: not signed off. Human asked for all three findings fixed now: 006 (t
 Issue 006: Raise counts carry recency
 Counts now read `(raised N×, last YYYY-MM-DD)` in retro, grill and template CHARTER.md; retro sets `last` to today and breaks ties by the later `last`; test added.
 Next: 007 edits retro (+1 line so far) and 008 edits grill (+2 so far); this Kit's own CHARTER.md and ADR 0008/README still say "most recently raised", which is fine for now.
+Issue 007: No "next Features" wording left
+Retro lesson row, CONTEXT.md Charter and both CLAUDE.md copies now say "ranked Features"; test added; no SKILL.md line count change.
+Next: 008 edits grill (+2 so far, 1 line of budget left).
