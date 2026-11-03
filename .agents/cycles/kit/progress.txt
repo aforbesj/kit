@@ -4,3 +4,6 @@ Next: 002 must reuse the implement wording "append `raised: <idea>` to `progress
 Issue 002: Grill, review, qa record Raises
 Added the same raised: sentence to grill, review, qa (+2 lines each); one test now covers all 4 skills.
 Next: 003 edits grill again, which has only 1 line of its 3-line growth budget left.
+Issue 003: Grill picks from Top 3
+Cycle grill shows Top 3 and allows any/new pick; Charter grill fills Top 3/Bottom 3 (max 6, counts); template CHARTER.md shows format (grill body unchanged in line count); tests added.
+Next: 004 only needs README Pick/Close rows plus a test; template CHARTER.md and skills are already done.

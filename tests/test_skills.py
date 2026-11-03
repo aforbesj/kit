@@ -216,3 +216,17 @@ def test_brainstorm_last_line_restates_direction_appetite_and_words() -> None:
     last = _body(_brainstorm())[-1]
     assert "Direction" in last and "Appetite" in last and "words" in last
     assert "/kit:grill" in last
+
+
+def test_grill_picks_from_top_3_and_charter_grill_fills_tiers() -> None:
+    text = _skill("grill")
+    assert "show the Area's Top 3" in text
+    assert "any Feature on the list or something new" in text
+    assert "a Top 3 and a Bottom 3: at most 6 Features" in text
+    assert "(raised N×)" in text
+
+
+def test_template_charter_shows_top_3_bottom_3_with_counts() -> None:
+    text = (SKILLS.parent.parent / "template/CHARTER.md").read_text()
+    assert "Top 3" in text and "Bottom 3" in text
+    assert "at most 6" in text and "(raised 2×)" in text
