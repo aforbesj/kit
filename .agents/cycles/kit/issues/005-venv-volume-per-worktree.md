@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 mode: hands-off
 priority: infra
 blocked_by: []

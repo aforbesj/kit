@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 import sys
 from datetime import timedelta
@@ -157,6 +158,24 @@ def test_sandbox_run_passes_git_identity(tmp_path: Path) -> None:
     assert command[:2] == ["docker", "run"]
     assert "GIT_COMMITTER_NAME=Ada" in command
     assert "GIT_AUTHOR_EMAIL=ada@example.com" in command
+
+
+def test_sandbox_mounts_a_venv_volume_per_worktree(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    config = cli.load_config(root)
+    areas = [root / "wt" / name for name in ("core", "other area")]
+    for area in areas:
+        area.mkdir(parents=True)
+
+    commands = [cli.agent(config, root, area, "sonnet", "go", hands_off=True, local=False) for area in areas]
+
+    names = []
+    for command in commands:
+        volume = next(arg for arg in command if arg.endswith(f":{cli.VENV_PATH}"))
+        names.append(volume.split(":")[0])
+        assert re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", names[-1])
+        assert f"UV_PROJECT_ENVIRONMENT={cli.VENV_PATH}" in command
+    assert names == ["kit-venv-product-core", "kit-venv-product-other-area"]
 
 
 @pytest.mark.parametrize(

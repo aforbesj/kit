@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -141,9 +142,22 @@ def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands
         "-v", f"{repo}:{repo}",
         "-v", f"{repo}/data:{repo}/data:ro",
         "-v", f"{repo}/data/out:{repo}/data/out",
+        "-v", f"{venv_volume(root, cwd)}:{VENV_PATH}", "-e", f"UV_PROJECT_ENVIRONMENT={VENV_PATH}",
         "-w", str(cwd.resolve()), image_name(config),
         *base, "-p", "--dangerously-skip-permissions", "--model", model, text,
     ]  # fmt: skip
+
+
+VENV_PATH = "/home/kit/venv"
+
+
+def venv_volume(root: Path, cwd: Path) -> str:
+    """The Docker volume holding this worktree's sandbox .venv: kit-venv-<product>-<area>."""
+
+    def clean(name: str) -> str:
+        return re.sub(r"[^A-Za-z0-9_.-]+", "-", name).strip("-.") or "x"
+
+    return f"kit-venv-{clean(root.resolve().name)}-{clean(cwd.resolve().name)}"
 
 
 def image_name(config: Config) -> str:
