@@ -33,3 +33,6 @@ Tests written alongside the code, not strictly first.
 010: Dirty-tree commands name the worktree. `stop_dirty` now prints `git -C .worktrees/<area> ...` in keep: and discard:, so pasting from the root acts on the worktree only.
 Remaining todo: 011 (Docker-gated venv test). Start gate and `once` share stop_dirty, so they print the same lines.
 Test written first; it runs the printed discard: line from the root with shell=True and checks a root file survives.
+011: Host venv unchanged after sandbox test. `test_sandbox_leaves_host_venv_alone` builds the real `cli.agent` docker command, swaps the agent for `uv sync`, and checks the host `.venv/bin/python` realpath and that the volume exists.
+It is skipped when `docker info` fails, so it has never run here (no Docker); the next pass should treat it as unverified. Test written after the Issue, not seen failing.
+All 11 Issues are done; next pass should print COMPLETE.

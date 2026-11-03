@@ -700,3 +700,30 @@ def test_interrupt_before_the_pass_loop_prints_stop_reason(
     monkeypatch.setattr(cli, step, interrupted)
     assert cli.run(root, "core", max_iterations=2, local=step == "workspace") == 130
     assert capsys.readouterr().out.splitlines()[-1] == "Stop reason: interrupted: Ctrl-C"
+
+
+def _docker_available() -> bool:
+    try:
+        return subprocess.run(["docker", "info"], capture_output=True, check=False).returncode == 0
+    except OSError:
+        return False
+
+
+@pytest.mark.skipif(not _docker_available(), reason="needs Docker")
+def test_sandbox_leaves_host_venv_alone(tmp_path: Path) -> None:
+    root = tmp_path / "venvprod"
+    root.mkdir()
+    (root / "pyproject.toml").write_text('[project]\nname = "venvprod"\nversion = "0"\nrequires-python = ">=3.9"\n')
+    subprocess.run([sys.executable, "-m", "venv", str(root / ".venv")], check=True, capture_output=True)
+    config: cli.Config = {"sandbox": {"image": "kit-sandbox"}}
+    before = (root / ".venv" / "bin" / "python").resolve()
+    volume = cli.venv_volume(root, root)
+    try:
+        command = cli.agent(config, root, root, "sonnet", "go", hands_off=True, local=False)
+        sync = [*command[: command.index(cli.image_name(config)) + 1], "uv", "sync"]
+        subprocess.run(sync, check=True, capture_output=True)
+
+        assert (root / ".venv" / "bin" / "python").resolve() == before
+        assert subprocess.run(["docker", "volume", "inspect", volume], capture_output=True, check=False).returncode == 0
+    finally:
+        subprocess.run(["docker", "volume", "rm", volume], capture_output=True, check=False)
