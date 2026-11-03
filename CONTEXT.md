@@ -46,8 +46,11 @@ _Avoid_: estimate, budget, deadline
 **Raise**: An idea for a Feature coming up during a Cycle. Counted at most once per Cycle; Raises rank an Area's Features.
 _Avoid_: mention, vote
 
-**Stop reason**: The last line of every `kit run`: a category (complete, cap reached, agent failed, dirty tree) plus a short detail of what happened. Never silent, never a bare category.
+**Stop reason**: The last line of every `kit run`: a category (complete, cap reached, agent failed, dirty tree, interrupted) plus a short detail of what happened. Never silent, never a bare category.
 _Avoid_: exit message, status
+
+**QA round**: One `/kit:qa` pass with the human, recorded as one `qa:` commit. Review rounds inside a Build don't count.
+_Avoid_: review round (that is the Build's own check)
 
 **Gate**: A check work must pass to move on.
 _Avoid_: guardrail, policy
