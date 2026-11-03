@@ -40,3 +40,6 @@ For the retro: hands-off commits read +0000 because the Build ran installed kit-
 Issue 008: retro measures pick to now
 retro now measures elapsed time from the `pick:` commit to now (kit close has not run yet); test pins "to now" and no `close:`.
 Todo: 009 (qa commits `qa: <feature>` each round) is the last one.
+Issue 009: qa commits each round
+qa step 4 commits `qa: <feature>` once per round after qa.md and new Issues (--allow-empty if nothing changed); test_qa_commits_one_qa_commit_per_round.
+All Issues done; next pass prints COMPLETE.

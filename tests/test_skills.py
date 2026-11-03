@@ -168,6 +168,13 @@ def test_qa_asks_when_a_round_passes_appetite_before_writing_issues() -> None:
     assert text.index("was the PRD wrong?") < text.index("write a new Issue")
 
 
+def test_qa_commits_one_qa_commit_per_round() -> None:
+    text = _skill("qa")
+    assert 'git commit -m "qa: <feature>"' in text
+    assert text.count("qa: <feature>") == 1
+    assert text.index("qa: <feature>") > text.index("write a new Issue")
+
+
 def test_brainstorm_asks_appetite_then_filters_before_directions() -> None:
     text = "\n".join(_body(_brainstorm()))
     assert "Appetite" in text
