@@ -34,7 +34,7 @@ _Avoid_: test data, fixtures, prod copy
 **Validation**: Running a Feature on Sample data against the PRD's Done when targets. Comes after test cases and before QA.
 _Avoid_: score, eval, UAT
 
-**Brainstorm**: Widening a problem into many directions until the human chooses one to grill. Optional; runs before a Charter grill. Rejects nothing on record.
+**Brainstorm**: Widening a problem into many directions until the human chooses one to grill. Optional; runs outside any Cycle, from the latest `main`, before a Charter grill. Rejects nothing on record.
 _Avoid_: ideation, discovery, exploration
 
 **Direction**: A broad way to address the problem, with its cost; not yet a design. A Brainstorm widens into many; the human picks one to grill.
