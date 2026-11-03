@@ -27,3 +27,8 @@ Notes, not Issues: `close --abandon` with a remote but an unpushed Cycle Branch 
 008: ruff format is clean and a test now guards it.
 Added tests/test_format.py running ruff format --check; formatted cli.py and tests/test_cli.py only.
 Next: no Issues left (uv.lock drift still left uncommitted).
+review (2): Sample data none, so no validation run.
+Passed: pyright 0 errors; ruff check clean; ruff format --check clean (37 files); pytest 29 passed in 0.89s. Every Done when line has a matching test and passes; Issues 001-008 meet their Acceptance. The diff stays inside the PRD's scope (CHARTER.md comes from the grill commit; uv.lock drift is uncommitted and not in the diff).
+Failed: `tests/test_format.py` `test_ruff_format_is_clean()` has no return type, against "type every function signature" (pyright strict covers only `src`, so it passed).
+Issues written: 009 type every signature.
+Notes, not Issues: still open from the last review, `close --abandon` pushes without capturing output, so a missing remote branch prints git's stderr; it still returns 0.
