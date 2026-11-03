@@ -1,3 +1,6 @@
 001: Added brainstorm skill (25-line cap, ends at /kit:grill, writes nothing); grill skill now offers /kit:brainstorm on an empty Charter and treats a grill after a Brainstorm as a Charter grill that may add Features and widen scope.
 Tests live in tests/test_skills.py (text checks on SKILL.md files); extend it for the retro, template, README checks in Issues 002/003.
 Issue 001 was mode: hands-on but named explicitly, so it was built here.
+002: Template CHARTER.md now says only a Charter grill or a retro edits it; retro skill points to /kit:brainstorm when an Area has no next Feature (tests added to tests/test_skills.py).
+Retro table row for CHARTER.md also reworded to 'only a Charter grill or the retro edits it'.
+Next: Issue 003 (docs: Phases line in both CLAUDE.md files, README) is the only one left.

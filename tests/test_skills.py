@@ -35,3 +35,15 @@ def test_grill_points_empty_charter_to_brainstorm_and_widens_after_one() -> None
     assert "Charter grill" in text
     assert "after a Brainstorm" in text
     assert "add Features" in text and "widen scope" in text
+
+
+def test_template_charter_names_charter_grill_and_retro() -> None:
+    text = (SKILLS.parent.parent / "template/CHARTER.md").read_text()
+    assert "only a retro edits it" not in text
+    assert "Charter grill" in text and "retro" in text
+
+
+def test_retro_points_empty_area_to_brainstorm() -> None:
+    text = (SKILLS / "retro/SKILL.md").read_text()
+    assert "/kit:brainstorm" in text
+    assert "Remove the finished Feature from `CHARTER.md` and name the next one" in text
