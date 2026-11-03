@@ -37,3 +37,19 @@ docker run --rm -v kit-venv-probe:/home/kit/venv kit-sandbox touch /home/kit/ven
 - `src/kit/cli.py`: `stop`, `dirty_files`, `stop_dirty` (about :334 to :380), and `run`.
 - `src/kit/cli.py`: `is_kit`, `plugin_args`, `hand_off`, `venv_volume` (about :181 to :220).
 - `src/kit/sandbox/Dockerfile`: unchanged. The volume fix belongs here (create `/home/kit/venv` as `kit`, so Docker copies its ownership into a new volume).
+
+---
+
+# Round 2 of 2
+
+Build: 014 and 015 done, review clean (round 5). Checked on the host, where Docker is available.
+
+| Check | Result |
+|---|---|
+| Old image without `/home/kit/venv` is rebuilt by `sandbox()` | ✅ Before: image lacked the folder. `cli.sandbox("kit-sandbox")` printed `Rebuilding the sandbox image kit-sandbox (it lacks /home/kit/venv)...`. After: the folder is there |
+| New volume writable as `kit` | ✅ `touch /home/kit/venv/x` in a new `kit-venv-probe` volume: WRITABLE |
+| Host `.venv/bin/python` unchanged after a sandboxed run | ✅ `test_sandbox_leaves_host_venv_alone` passes. No `kit-venv-*` volumes are left behind |
+| Start gate wording | ✅ From the root, with the worktree CLI: `Stop reason: dirty tree: before start, 1 uncommitted: qa-probe.txt`, exit 1 |
+| pyright, ruff, pytest | ✅ 0 errors, clean, **101 passed, 0 skipped** |
+
+Every Done when line from round 1 now passes.
