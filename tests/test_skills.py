@@ -109,3 +109,34 @@ def test_cycle_ends_at_merge_is_adr_7() -> None:
     assert not (adrs / "0001-cycle-ends-at-merge.md").exists()
     text = (adrs / "0007-cycle-ends-at-merge.md").read_text()
     assert text.startswith("# 7. ")
+
+
+DEFAULT_APPETITE = "2 hours, 5 Issues, 2 QA rounds"
+
+
+def _skill(name: str) -> str:
+    return (SKILLS / name / "SKILL.md").read_text()
+
+
+def test_grill_asks_cycle_appetite_first_with_default() -> None:
+    text = _skill("grill")
+    assert "Appetite" in text
+    assert DEFAULT_APPETITE in text
+    assert text.index("Appetite") < text.index("Map the decisions")
+
+
+def test_grill_commits_pick_when_frontier_is_empty() -> None:
+    assert "`pick: <feature>`" in _skill("grill")
+
+
+def test_to_prd_template_has_appetite_line() -> None:
+    text = _skill("to-prd")
+    assert "Appetite:" in text
+    assert "(default)" in text
+
+
+def test_retro_measures_cycle_against_appetite() -> None:
+    text = _skill("retro")
+    assert "Appetite" in text
+    for word in ("`pick:`", "`close:`", "`qa:`", "Issue", DEFAULT_APPETITE):
+        assert word in text

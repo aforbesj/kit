@@ -11,6 +11,8 @@ Write `.agents/cycles/<area>/prd.md` from the grill in this conversation. Ask fo
 ```markdown
 # <Feature>
 
+Appetite: <elapsed time, Issues, QA rounds from the grill>
+
 ## Problem
 <what is wrong, in a few sentences>
 
@@ -28,6 +30,8 @@ Write `.agents/cycles/<area>/prd.md` from the grill in this conversation. Ask fo
 - <modules or files touched>
 - Sample data: data/<dated-folder>/  (or "none")
 ```
+
+Write the Appetite the grill set; if the grill used the default, write `2 hours, 5 Issues, 2 QA rounds (default)`.
 
 Every Done when line is a number or a yes/no check. Mark each one `(test)` if a test case can check it, `(validation)` if it needs Sample data.
 

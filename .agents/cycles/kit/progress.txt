@@ -4,3 +4,6 @@ No other file referenced the old path; next ADR is 0008.
 Issue 006: Sandbox commits carry the host UTC offset
 Added posix_tz() in cli.py and a -e TZ= flag on the hands-off docker run; tests in tests/test_cli.py.
 Remaining todo: 001 (tracer, unblocks 002-004), then 002, 003, 004.
+Issue 001: Appetite runs from grill to retro
+grill asks Appetite first (default named) and commits `pick:`; to-prd has an Appetite line; retro measures against it; 4 tests in tests/test_skills.py.
+Todo: 002, 003 (blocked only by 001, now free), then 004 (brainstorm, keep body <= 25 lines).

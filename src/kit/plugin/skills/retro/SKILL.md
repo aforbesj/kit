@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Retro
 
-Read `progress.txt`, `qa.md` and the Cycle's commits. Ask the human what surprised them. Sort every lesson into one place:
+Read `progress.txt`, `qa.md` and the Cycle's commits. Measure the Cycle against the PRD's Appetite: elapsed time from the `pick:` commit to `close:`, the number of Issues, and the number of `qa:` rounds (use `2 hours, 5 Issues, 2 QA rounds` if the PRD has no Appetite line). Say where it ran past. Ask the human what surprised them. Sort every lesson into one place:
 
 | Lesson | Goes to |
 | --- | --- |
