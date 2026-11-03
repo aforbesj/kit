@@ -104,7 +104,9 @@ def _latest_main(root: Path) -> str:
         print(f"Warning: fetch from origin failed; starting from local {main}.")
         return main
     if git(root, "branch", "--show-current") == main and not git(root, "status", "--porcelain"):
-        subprocess.run(["git", "merge", "-q", "--ff-only", f"origin/{main}"], check=False, cwd=root, capture_output=True)
+        subprocess.run(
+            ["git", "merge", "-q", "--ff-only", f"origin/{main}"], check=False, cwd=root, capture_output=True
+        )
     return f"origin/{main}"
 
 

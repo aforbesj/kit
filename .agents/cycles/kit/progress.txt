@@ -24,3 +24,6 @@ Passed: pyright 0 errors; ruff check clean; pytest 28 passed in 0.87s. Every Don
 Failed: `ruff format --check` reports 2 files (src/kit/cli.py:107, tests/test_cli.py:374), against the Python standards.
 Issues written: 008 ruff format clean.
 Notes, not Issues: `close --abandon` with a remote but an unpushed Cycle Branch prints git's "remote ref does not exist" to stderr (the push is not captured) but still returns 0. `close` still rebases onto local main, not origin/main (pre-existing, out of scope).
+008: ruff format is clean and a test now guards it.
+Added tests/test_format.py running ruff format --check; formatted cli.py and tests/test_cli.py only.
+Next: no Issues left (uv.lock drift still left uncommitted).
