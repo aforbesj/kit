@@ -1,5 +1,5 @@
 {
-  "kit": "0.1.0",
+  "kit": "0.2.0",
   "stack": "python",
   "commands": {
     "typecheck": "uv run pyright",
