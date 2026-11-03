@@ -46,6 +46,9 @@ _Avoid_: estimate, budget, deadline
 **Raise**: An idea for a Feature coming up during a Cycle. Counted at most once per Cycle; Raises rank an Area's Features.
 _Avoid_: mention, vote
 
+**Stop reason**: The last line of every `kit run`: a category (complete, cap reached, agent failed, dirty tree) plus a short detail of what happened. Never silent, never a bare category.
+_Avoid_: exit message, status
+
 **Gate**: A check work must pass to move on.
 _Avoid_: guardrail, policy
 

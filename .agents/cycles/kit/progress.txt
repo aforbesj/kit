@@ -1,0 +1,1 @@
+raised: fact lookups (grill Explore, Research) run on the cheapest model that is enough, set in kit.json models (e.g. "lookup": "haiku")
