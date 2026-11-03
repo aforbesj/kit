@@ -68,14 +68,29 @@ def workspace(root: Path, area: str) -> Path:
     path = root / ".worktrees" / area
     if not path.exists():
         branch = f"cycle/{area}"
+        base = _latest_main(root)
         known = subprocess.run(
             ["git", "rev-parse", "--verify", "--quiet", branch], check=False, cwd=root, capture_output=True
         )
-        if known.returncode == 0:
+        if known.returncode == 0 and not _merged(root, branch, base):
+            print("Cycle still open: not merged into `main`")
             git(root, "worktree", "add", "-q", str(path), branch)
-        else:
-            git(root, "worktree", "add", "-q", "-b", branch, str(path), _latest_main(root))
+            return path
+        if known.returncode == 0:
+            git(root, "branch", "-q", "-D", branch)
+            if "origin" in git(root, "remote").split():
+                subprocess.run(
+                    ["git", "push", "-q", "origin", "--delete", branch], check=False, cwd=root, capture_output=True
+                )
+        git(root, "worktree", "add", "-q", "-b", branch, str(path), base)
     return path
+
+
+def _merged(root: Path, branch: str, base: str) -> bool:
+    done = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", branch, base], check=False, cwd=root, capture_output=True
+    )
+    return done.returncode == 0
 
 
 def _latest_main(root: Path) -> str:

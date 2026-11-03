@@ -4,3 +4,6 @@ Next: 001 is unblocked; 005 and 006 are now unblocked by 004.
 001: new Cycle Branch starts from fetched origin/main, falling back to local main with a warning.
 Added _latest_main in cli.py used by workspace; tests use a bare local origin (clone with -b main).
 Next: 002 and 003 are unblocked; 002 should reuse _latest_main and its fetch (uv.lock drift is uv noise, left uncommitted).
+002: workspace removes a merged cycle/<area> (local and remote) and starts fresh; reopens an unmerged one with "Cycle still open" message.
+Added _merged (git merge-base --is-ancestor against _latest_main) in cli.py; workspace now calls _latest_main first, so fetch happens once per creation.
+Next: 003 and 005 are unblocked; 003 can fast-forward root main after the fetch in _latest_main (uv.lock drift still left uncommitted).

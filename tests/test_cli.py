@@ -217,9 +217,7 @@ def test_workspace_branches_from_latest_origin_main(tmp_path: Path) -> None:
     assert git(ws, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
 
 
-def test_workspace_without_remote_warns_and_uses_local_main(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_workspace_without_remote_warns_and_uses_local_main(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     root = product(tmp_path)
 
     ws = cli.workspace(root, "core")
@@ -238,3 +236,40 @@ def test_workspace_with_failing_fetch_warns_and_uses_local_main(
 
     assert git(ws, "rev-parse", "HEAD") == git(root, "rev-parse", "main")
     assert "warning" in capsys.readouterr().out.lower()
+
+
+def cycle_branch_with_commit(root: Path, origin: Path) -> None:
+    git(root, "switch", "-q", "-c", "cycle/core")
+    (root / "work.txt").write_text("w")
+    git(root, "add", "-A")
+    git(root, "commit", "-m", "work")
+    git(root, "push", "-q", "origin", "cycle/core")
+    git(root, "switch", "-q", "main")
+
+
+def test_workspace_removes_merged_branch_and_starts_fresh(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    cycle_branch_with_commit(root, origin)
+    other = tmp_path / "other"
+    git(tmp_path, "clone", "-q", "-b", "main", str(origin), str(other))
+    git(other, "merge", "-q", "--no-ff", "-m", "merge", "origin/cycle/core")
+    git(other, "push", "-q", "origin", "HEAD:main")
+
+    ws = cli.workspace(root, "core")
+
+    assert git(ws, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
+    assert git(origin, "branch", "--list", "cycle/core") == ""
+
+
+def test_workspace_reopens_unmerged_branch(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    cycle_branch_with_commit(root, origin)
+    tip = git(root, "rev-parse", "cycle/core")
+
+    ws = cli.workspace(root, "core")
+
+    assert git(ws, "rev-parse", "HEAD") == tip
+    assert git(origin, "rev-parse", "cycle/core") == tip
+    assert "Cycle still open: not merged into `main`" in capsys.readouterr().out
