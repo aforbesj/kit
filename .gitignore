@@ -7,3 +7,4 @@ dist/
 data/
 .worktrees/
 .agents/handoff.md
+.python-version
