@@ -19,3 +19,6 @@ Next: all Issues done; grill is +2 lines since pick.
 Review 2: Rank the next Features by how often they're raised
 Passed: pyright 0 errors, ruff check and format clean, pytest 69 passed (0.93s). SKILL.md growth since pick 7cd619f: grill +2, implement +2, qa +2, review +2, retro +1, others 0 (all ≤3; brainstorm ≤25 check passes). Done when lines 1-8 met; 005 fix in place (grill names `.agents/cycles/<area>/progress.txt`, create if missing). Changes outside What changes (CONTEXT.md Raise, ADR 0008, test_cli.py) are called for by the PRD. No CLI change. Sample data: none, so no validation run.
 Issues written: none.
+Review 3: Rank the next Features by how often they're raised
+Passed: pyright 0 errors, ruff check clean, ruff format 40 files clean, pytest 69 passed (0.97s). SKILL.md growth since pick 7cd619f: grill +2, implement +2, qa +2, review +2, retro +1, others 0 (all ≤3; brainstorm body ≤25 check passes). Done when lines 1-8 met; grill names `.agents/cycles/<area>/progress.txt` (005 holds). Out-of-scope check: no CLI change, this Kit's CHARTER.md untouched; CONTEXT.md Raise, ADR 0008 and test_cli.py follow from the PRD. Sample data: none, so no validation run.
+Issues written: none.
