@@ -8,3 +8,6 @@ The Docker-available `.venv/bin/python` acceptance test was not written (no Dock
 007: Kit product loads worktree plugin. `plugin_args(root, cwd)` in cli.py returns `--plugin-dir <cwd>/src/kit/plugin` when root pyproject name is `kit-cycle`; `agent()` and the plain planning command in `once` include it.
 008 can reuse the same pyproject-name check (consider splitting out an `is_kit(root)` helper); the name is read with tomllib from root/pyproject.toml.
 The test was written alongside the code, not strictly before it.
+008: Kit product runs worktree CLI. `is_kit(root)` now backs `plugin_args`; `hand_off(root, area, argv)` in cli.py runs `uv run --project <worktree> kit <argv>` with KIT_SELF=1 for `once`/`run` and returns its exit code (None = run in-process).
+Hand-off happens in `main()` after parsing, so it also creates the worktree via `workspace()`. Remaining todo: 002, 003 (needs 002), 004, 006.
+Test written after the code; it fakes subprocess.run and does not launch a real nested uv.

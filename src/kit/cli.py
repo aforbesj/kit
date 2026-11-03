@@ -152,13 +152,29 @@ def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands
 VENV_PATH = "/home/kit/venv"
 
 
+def is_kit(root: Path) -> bool:
+    """True when the Product is the Kit itself: pyproject name `kit-cycle` (ADR 0010)."""
+    try:
+        return tomllib.loads((root / "pyproject.toml").read_text()).get("project", {}).get("name") == "kit-cycle"
+    except (OSError, tomllib.TOMLDecodeError):
+        return False
+
+
 def plugin_args(root: Path, cwd: Path) -> list[str]:
     """When the Product is the Kit, load the worktree's own plugin (ADR 0010)."""
-    try:
-        name = tomllib.loads((root / "pyproject.toml").read_text()).get("project", {}).get("name")
-    except (OSError, tomllib.TOMLDecodeError):
-        return []
-    return ["--plugin-dir", str(cwd.resolve() / "src" / "kit" / "plugin")] if name == "kit-cycle" else []
+    return ["--plugin-dir", str(cwd.resolve() / "src" / "kit" / "plugin")] if is_kit(root) else []
+
+
+def hand_off(root: Path, area: str, argv: list[str]) -> int | None:
+    """When the Product is the Kit, run the worktree's own CLI and return its exit code (ADR 0010).
+
+    Returns None when there is nothing to hand off to: another Product, or already handed off.
+    """
+    if os.environ.get("KIT_SELF") == "1" or not is_kit(root):
+        return None
+    cwd = workspace(root, area)
+    command = ["uv", "run", "--project", str(cwd), "kit", *argv]
+    return subprocess.run(command, check=False, cwd=root, env={**os.environ, "KIT_SELF": "1"}).returncode
 
 
 def venv_volume(root: Path, cwd: Path) -> str:
@@ -434,6 +450,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "doctor":
         return doctor(root)
+    if args.command in ("once", "run"):
+        handed = hand_off(root, args.area, sys.argv[1:] if argv is None else argv)
+        if handed is not None:
+            return handed
     if args.command == "once":
         return once(root, args.area, args.issue)
     if args.command == "run":

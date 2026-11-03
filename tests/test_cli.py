@@ -4,6 +4,7 @@ import subprocess
 import sys
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -482,3 +483,31 @@ def test_stop_reason_interrupted(
 
     assert cli.run(root, "core", max_iterations=2, local=True) != 0
     assert last_line(capsys) == "Stop reason: interrupted: Ctrl-C"
+
+
+def test_self_host_hands_off_to_the_worktree_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product(tmp_path)
+    (root / "pyproject.toml").write_text('[project]\nname = "kit-cycle"\n')
+    cwd = root / "wt"
+    monkeypatch.chdir(root)
+    monkeypatch.delenv("KIT_SELF", raising=False)
+    monkeypatch.setattr(cli, "workspace", lambda r, a: cwd)
+    calls: list[tuple[list[str], dict[str, str]]] = []
+
+    def fake(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        calls.append((command, kwargs["env"]))
+        return subprocess.CompletedProcess(command, 7)
+
+    monkeypatch.setattr(cli.subprocess, "run", fake)
+    assert cli.main(["run", "core", "--local"]) == 7
+    assert cli.main(["once", "core", "001"]) == 7
+    assert calls[0][0] == ["uv", "run", "--project", str(cwd), "kit", "run", "core", "--local"]
+    assert calls[1][0][-3:] == ["once", "core", "001"]
+    assert all(env["KIT_SELF"] == "1" for _, env in calls)
+
+    # Already handed off, or another Product: no hand-off.
+    monkeypatch.setenv("KIT_SELF", "1")
+    assert cli.hand_off(root, "core", []) is None
+    monkeypatch.delenv("KIT_SELF")
+    (root / "pyproject.toml").write_text('[project]\nname = "other"\n')
+    assert cli.hand_off(root, "core", []) is None
