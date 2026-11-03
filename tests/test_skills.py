@@ -84,7 +84,8 @@ def test_plugin_description_names_brainstorm_before_grill() -> None:
     import json
 
     manifest = json.loads((SKILLS.parent / ".claude-plugin/plugin.json").read_text())
-    desc = manifest["description"]
+    desc = manifest["description"].lower()
+    assert "loop: brainstorm" not in desc
     assert desc.index("brainstorm") < desc.index("grill")
 
 
