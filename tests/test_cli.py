@@ -180,3 +180,196 @@ def test_doctor_fails_only_on_required(tmp_path: Path, monkeypatch: pytest.Monke
 
 def test_sandbox_image_ships_with_the_package() -> None:
     assert (cli.SANDBOX / "Dockerfile").is_file()
+
+
+@pytest.mark.parametrize("abandon", [False, True])
+def test_close_refuses_dirty_checkout(tmp_path: Path, abandon: bool) -> None:
+    root = product(tmp_path)
+    ws = cli.workspace(root, "core")
+    (ws / "scratch.txt").write_text("unsaved")
+
+    assert cli.close(root, "core", abandon=abandon) == 1
+    assert (ws / "scratch.txt").read_text() == "unsaved"
+    assert git(root, "branch", "--list", "cycle/core")
+    assert not git(root, "tag", "--list", "abandoned/*")
+
+
+def with_origin(tmp_path: Path, root: Path) -> Path:
+    origin = tmp_path / "origin.git"
+    git(tmp_path, "init", "-q", "--bare", str(origin))
+    git(root, "remote", "add", "origin", str(origin))
+    git(root, "push", "-q", "origin", "HEAD:main")
+    return origin
+
+
+def test_workspace_branches_from_latest_origin_main(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    other = tmp_path / "other"
+    git(tmp_path, "clone", "-q", "-b", "main", str(origin), str(other))
+    (other / "new.txt").write_text("x")
+    git(other, "add", "-A")
+    git(other, "commit", "-m", "ahead")
+    git(other, "push", "-q", "origin", "HEAD:main")
+
+    ws = cli.workspace(root, "core")
+
+    assert git(ws, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
+
+
+def test_workspace_without_remote_warns_and_uses_local_main(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+
+    ws = cli.workspace(root, "core")
+
+    assert git(ws, "rev-parse", "HEAD") == git(root, "rev-parse", "main")
+    assert "warning" in capsys.readouterr().out.lower()
+
+
+def test_workspace_with_failing_fetch_warns_and_uses_local_main(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = product(tmp_path)
+    git(root, "remote", "add", "origin", str(tmp_path / "missing.git"))
+
+    ws = cli.workspace(root, "core")
+
+    assert git(ws, "rev-parse", "HEAD") == git(root, "rev-parse", "main")
+    assert "warning" in capsys.readouterr().out.lower()
+
+
+def cycle_branch_with_commit(root: Path, origin: Path) -> None:
+    git(root, "switch", "-q", "-c", "cycle/core")
+    (root / "work.txt").write_text("w")
+    git(root, "add", "-A")
+    git(root, "commit", "-m", "work")
+    git(root, "push", "-q", "origin", "cycle/core")
+    git(root, "switch", "-q", "main")
+
+
+def test_workspace_removes_merged_branch_and_starts_fresh(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    cycle_branch_with_commit(root, origin)
+    other = tmp_path / "other"
+    git(tmp_path, "clone", "-q", "-b", "main", str(origin), str(other))
+    git(other, "merge", "-q", "--no-ff", "-m", "merge", "origin/cycle/core")
+    git(other, "push", "-q", "origin", "HEAD:main")
+
+    ws = cli.workspace(root, "core")
+
+    assert git(ws, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
+    assert git(origin, "branch", "--list", "cycle/core") == ""
+
+
+def test_workspace_reopens_unmerged_branch(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    cycle_branch_with_commit(root, origin)
+    tip = git(root, "rev-parse", "cycle/core")
+
+    ws = cli.workspace(root, "core")
+
+    assert git(ws, "rev-parse", "HEAD") == tip
+    assert git(origin, "rev-parse", "cycle/core") == tip
+    assert "Cycle still open: not merged into `main`" in capsys.readouterr().out
+
+
+def push_ahead(tmp_path: Path, origin: Path) -> Path:
+    other = tmp_path / "other"
+    git(tmp_path, "clone", "-q", "-b", "main", str(origin), str(other))
+    (other / "new.txt").write_text("x")
+    git(other, "add", "-A")
+    git(other, "commit", "-m", "ahead")
+    git(other, "push", "-q", "origin", "HEAD:main")
+    return other
+
+
+def test_workspace_fast_forwards_clean_root_on_main(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    other = push_ahead(tmp_path, origin)
+    git(root, "branch", "-M", "main")
+
+    cli.workspace(root, "core")
+
+    assert git(root, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
+
+
+def test_workspace_leaves_dirty_root_alone(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    other = push_ahead(tmp_path, origin)
+    git(root, "branch", "-M", "main")
+    before = git(root, "rev-parse", "HEAD")
+    (root / "scratch.txt").write_text("wip")
+
+    ws = cli.workspace(root, "core")
+
+    assert git(root, "rev-parse", "HEAD") == before
+    assert (root / "scratch.txt").read_text() == "wip"
+    assert git(ws, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
+
+
+def test_workspace_leaves_root_on_other_branch_alone(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    other = push_ahead(tmp_path, origin)
+    git(root, "branch", "-M", "main")
+    git(root, "checkout", "-q", "-b", "side")
+    before = git(root, "rev-parse", "HEAD")
+
+    ws = cli.workspace(root, "core")
+
+    assert git(root, "rev-parse", "HEAD") == before
+    assert git(root, "branch", "--show-current") == "side"
+    assert git(root, "rev-parse", "main") == before
+    assert git(ws, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
+
+
+def test_close_abandon_with_remote_keeps_tag_there_and_drops_branch(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    cli.workspace(root, "core")
+    git(root, "push", "-q", "origin", "cycle/core")
+
+    assert cli.close(root, "core", abandon=True) == 0
+    assert git(origin, "tag", "--list", "abandoned/core-*")
+    assert git(origin, "branch", "--list", "cycle/core") == ""
+
+
+def test_close_abandon_without_remote_keeps_tag_locally(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    cli.workspace(root, "core")
+
+    assert cli.close(root, "core", abandon=True) == 0
+    assert git(root, "tag", "--list", "abandoned/core-*")
+
+
+def _assert_next_steps(out: str, merge: str, area: str) -> None:
+    steps = [merge, f"kit once {area}", "/kit:grill"]
+    positions = [out.find(step) for step in steps]
+    assert all(p >= 0 for p in positions), out
+    assert positions == sorted(positions)
+
+
+def test_close_prints_next_steps_with_remote(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    with_origin(tmp_path, root)
+    cli.workspace(root, "core")
+
+    assert cli.close(root, "core", abandon=False) == 0
+    _assert_next_steps(capsys.readouterr().out, "Merge", "core")
+
+
+def test_close_prints_next_steps_without_remote(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    cli.workspace(root, "core")
+
+    assert cli.close(root, "core", abandon=False) == 0
+    _assert_next_steps(capsys.readouterr().out, "git merge --no-ff cycle/core", "core")
+
+
+def test_retro_skill_removes_finished_feature_from_charter() -> None:
+    text = (Path(__file__).parent.parent / "src/kit/plugin/skills/retro/SKILL.md").read_text()
+    assert "Remove the finished Feature from `CHARTER.md` and name the next one" in text

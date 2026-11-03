@@ -17,4 +17,4 @@ Read `progress.txt`, `qa.md` and the Cycle's commits. Ask the human what surpris
 | An Area whose Features stopped sharing words | `CHARTER.md`: split the Area |
 | A process problem with the Kit | Listed in your final message, for the Kit's own Charter |
 
-Show the edits, apply the approved ones, and commit with message `retro: <feature>`. Then tell the human to run `kit close <area>`.
+Remove the finished Feature from `CHARTER.md` and name the next one. Show the edits, apply the approved ones, and commit with message `retro: <feature>`. Then tell the human to run `kit close <area>`.

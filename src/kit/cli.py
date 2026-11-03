@@ -68,14 +68,46 @@ def workspace(root: Path, area: str) -> Path:
     path = root / ".worktrees" / area
     if not path.exists():
         branch = f"cycle/{area}"
+        base = _latest_main(root)
         known = subprocess.run(
             ["git", "rev-parse", "--verify", "--quiet", branch], check=False, cwd=root, capture_output=True
         )
-        if known.returncode == 0:
+        if known.returncode == 0 and not _merged(root, branch, base):
+            print("Cycle still open: not merged into `main`")
             git(root, "worktree", "add", "-q", str(path), branch)
-        else:
-            git(root, "worktree", "add", "-q", "-b", branch, str(path))
+            return path
+        if known.returncode == 0:
+            git(root, "branch", "-q", "-D", branch)
+            if "origin" in git(root, "remote").split():
+                subprocess.run(
+                    ["git", "push", "-q", "origin", "--delete", branch], check=False, cwd=root, capture_output=True
+                )
+        git(root, "worktree", "add", "-q", "-b", branch, str(path), base)
     return path
+
+
+def _merged(root: Path, branch: str, base: str) -> bool:
+    done = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", branch, base], check=False, cwd=root, capture_output=True
+    )
+    return done.returncode == 0
+
+
+def _latest_main(root: Path) -> str:
+    """The ref a new Cycle Branch starts from: origin/main after a fetch, else local main."""
+    main = load_config(root).get("main", "main") if (root / ".agents" / "kit.json").exists() else "main"
+    if not git(root, "remote"):
+        print(f"Warning: no remote; starting from local {main}.")
+        return main
+    fetched = subprocess.run(["git", "fetch", "-q", "origin"], check=False, cwd=root, capture_output=True)
+    if fetched.returncode != 0:
+        print(f"Warning: fetch from origin failed; starting from local {main}.")
+        return main
+    if git(root, "branch", "--show-current") == main and not git(root, "status", "--porcelain"):
+        subprocess.run(
+            ["git", "merge", "-q", "--ff-only", f"origin/{main}"], check=False, cwd=root, capture_output=True
+        )
+    return f"origin/{main}"
 
 
 def prompt(skill: str, area: str, cwd: Path, extra: str = "") -> str:
@@ -258,9 +290,15 @@ def close(root: Path, area: str, abandon: bool) -> int:
     """End a Cycle: tag it as abandoned, or pass the merge Gate and hand it to a PR."""
     cwd = root / ".worktrees" / area
     branch = f"cycle/{area}"
+    if cwd.exists() and git(cwd, "status", "--porcelain"):
+        print(f"Uncommitted changes in {cwd}. Commit or discard them, then close again.")
+        return 1
     if abandon:
         tag = f"abandoned/{area}-{date.today().isoformat()}"
         git(root, "tag", tag, branch)
+        if git(root, "remote"):
+            subprocess.run(["git", "push", "-q", "origin", tag], check=False, cwd=root)
+            subprocess.run(["git", "push", "-q", "origin", "--delete", branch], check=False, cwd=root)
         _free(root, cwd, branch, delete_branch=True)
         print(f"Abandoned. Kept as tag {tag}; the lesson belongs in CHARTER.md.")
         return 0
@@ -285,9 +323,10 @@ def close(root: Path, area: str, abandon: bool) -> int:
         git(cwd, "push", "-q", "-u", "origin", branch)
         if shutil.which("gh"):
             subprocess.run(["gh", "pr", "create", "--fill", "--base", main, "--head", branch], check=False, cwd=cwd)
-        print("Merge with a merge commit once CI passes and you have signed off.")
+        merge = "Merge the PR with a merge commit once CI passes and you have signed off."
     else:
-        print(f"No remote. After sign-off: git merge --no-ff {branch}")
+        merge = f"No remote. After sign-off, merge: git merge --no-ff {branch}"
+    print(f"Next:\n  1. {merge}\n  2. kit once {area}\n  3. /kit:grill")
     _free(root, cwd, branch, delete_branch=False)
     return 0
 
