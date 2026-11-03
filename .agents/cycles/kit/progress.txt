@@ -16,3 +16,6 @@ Issues written: 005 (grill's raised: line has no Cycle path and runs before the 
 Issue 005: Grill raises go to the Cycle progress
 Grill now says to append `raised: <idea>` to `.agents/cycles/<area>/progress.txt` (create if missing), same line count; shared raises test checks the grill path; new test added.
 Next: all Issues done; grill is +2 lines since pick.
+Review 2: Rank the next Features by how often they're raised
+Passed: pyright 0 errors, ruff check and format clean, pytest 69 passed (0.93s). SKILL.md growth since pick 7cd619f: grill +2, implement +2, qa +2, review +2, retro +1, others 0 (all ≤3; brainstorm ≤25 check passes). Done when lines 1-8 met; 005 fix in place (grill names `.agents/cycles/<area>/progress.txt`, create if missing). Changes outside What changes (CONTEXT.md Raise, ADR 0008, test_cli.py) are called for by the PRD. No CLI change. Sample data: none, so no validation run.
+Issues written: none.
