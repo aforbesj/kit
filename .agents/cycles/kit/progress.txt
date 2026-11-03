@@ -22,3 +22,4 @@ Issues written: none.
 Review 3: Rank the next Features by how often they're raised
 Passed: pyright 0 errors, ruff check clean, ruff format 40 files clean, pytest 69 passed (0.97s). SKILL.md growth since pick 7cd619f: grill +2, implement +2, qa +2, review +2, retro +1, others 0 (all ≤3; brainstorm body ≤25 check passes). Done when lines 1-8 met; grill names `.agents/cycles/<area>/progress.txt` (005 holds). Out-of-scope check: no CLI change, this Kit's CHARTER.md untouched; CONTEXT.md Raise, ADR 0008 and test_cli.py follow from the PRD. Sample data: none, so no validation run.
 Issues written: none.
+QA round 1: not signed off. Human asked for all three findings fixed now: 006 (tie-break needs a date), 007 ("next Features" wording), 008 (Charter grill Raises go to the Charter). Issues now 8 against an Appetite of 4.
