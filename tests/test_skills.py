@@ -86,3 +86,12 @@ def test_plugin_description_names_brainstorm_before_grill() -> None:
     manifest = json.loads((SKILLS.parent / ".claude-plugin/plugin.json").read_text())
     desc = manifest["description"]
     assert desc.index("brainstorm") < desc.index("grill")
+
+
+def test_marketplace_description_matches_plugin_manifest() -> None:
+    import json
+
+    manifest = json.loads((SKILLS.parent / ".claude-plugin/plugin.json").read_text())
+    market = json.loads((ROOT / ".claude-plugin/marketplace.json").read_text())
+    entry = next(p for p in market["plugins"] if p["name"] == "kit")
+    assert entry["description"] == manifest["description"]

@@ -5,7 +5,7 @@
     {
       "name": "kit",
       "source": "./src/kit/plugin",
-      "description": "The Cycle loop: grill, plan, split, build, review, QA, retro."
+      "description": "The Cycle loop: brainstorm, grill, plan, split, build, review, QA, retro."
     }
   ]
 }
