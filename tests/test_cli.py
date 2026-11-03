@@ -538,3 +538,54 @@ def test_run_stops_when_a_pass_leaves_files(tmp_path: Path, capsys: pytest.Captu
     assert "keep:" in out and "discard:" in out and "then: kit run core" in out
     assert (tmp_path / "dirty.n").read_text() == "1"
     assert out.splitlines()[-1].startswith("Stop reason: dirty tree: ")
+
+
+def test_run_refuses_a_dirty_tree_at_start(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    (cli.workspace(root, "core") / "stray.txt").write_text("x")
+
+    assert cli.run(root, "core", max_iterations=5, local=True) != 0
+
+    out = capsys.readouterr().out
+    assert "stray.txt" in out and "keep:" in out and "discard:" in out and "then: kit run core" in out
+    assert out.splitlines()[-1].startswith("Stop reason: dirty tree: ")
+    assert not (tmp_path / "calls.log").exists()
+
+
+def test_once_warns_on_dirty_tree_and_keeps_exit_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    fake = tmp_path / "once_agent.py"
+    fake.write_text("import pathlib, sys\npathlib.Path('stray.txt').write_text('x')\nsys.exit(4)\n")
+    config = json.loads((root / ".agents/kit.json").read_text())
+    config["agent"] = [sys.executable, str(fake)]
+    (root / ".agents/kit.json").write_text(json.dumps(config))
+    git(root, "commit", "-qam", "once agent")
+
+    assert cli.once(root, "core", None) == 4
+
+    out = capsys.readouterr().out
+    assert "dirty tree:" in out and "stray.txt" in out
+    assert out.splitlines()[-1].startswith("Stop reason: dirty tree: ")
+
+
+def test_no_commit_by_run_or_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product(tmp_path)
+    seen: list[list[str]] = []
+    real_run, real_popen = subprocess.run, subprocess.Popen
+
+    def spy_run(command: Any, *args: Any, **kwargs: Any) -> Any:
+        seen.append(list(command))
+        return real_run(command, *args, **kwargs)
+
+    def spy_popen(command: Any, *args: Any, **kwargs: Any) -> Any:
+        seen.append(list(command))
+        return real_popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(cli.subprocess, "run", spy_run)
+    monkeypatch.setattr(cli.subprocess, "Popen", spy_popen)
+    cli.once(root, "core", None)
+    cli.run(root, "core", max_iterations=3, local=True)
+
+    assert seen
+    for command in seen:
+        assert command[:2] not in (["git", "add"], ["git", "commit"])

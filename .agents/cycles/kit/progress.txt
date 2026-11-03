@@ -14,3 +14,6 @@ Test written after the code; it fakes subprocess.run and does not launch a real 
 002: Dirty tree stops run. `dirty_files(cwd)` and `stop_dirty(area, files, where)` in cli.py; `run` checks after each implement and review pass, prints the files, keep:/discard:/then: lines, then one `Stop reason: dirty tree:` last line, returns 1.
 003 should reuse `dirty_files`/`stop_dirty` for the start gate and `once` (once must warn only and keep claude's exit code). The keep: line keeps the literal `<n>: <title>` placeholder.
 Test written alongside the code; the fake agent writes an untracked stray.txt.
+003: Dirty tree gate at start and once. `run` checks `dirty_files` right after `workspace()` (after the Docker check, so the sandbox image step still precedes it) and returns 1 via `stop_dirty(..., "start")`; `once` calls `stop_dirty(..., "once")` after claude exits and returns claude's code.
+Remaining todo: 004, 006. 006 should reuse `venv_volume(root, cwd)`.
+Added a spy test over subprocess.run/Popen showing no git add/commit; tests written alongside the code.

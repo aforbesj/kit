@@ -346,7 +346,10 @@ def once(root: Path, area: str, issue: str | None) -> int:
         command = agent(config, root, cwd, models.get("implement", "sonnet"), text, hands_off=False, local=True)
     else:
         command = [*config.get("agent", ["claude"]), *plugin_args(root, cwd), "--model", models.get("plan", "opus")]
-    return subprocess.run(command, check=False, cwd=cwd).returncode
+    code = subprocess.run(command, check=False, cwd=cwd).returncode
+    if files := dirty_files(cwd):
+        stop_dirty(area, files, "once")
+    return code
 
 
 def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
@@ -355,6 +358,9 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
     if not local:
         sandbox(image_name(config))
     cwd = workspace(root, area)
+    if files := dirty_files(cwd):
+        stop_dirty(area, files, "start")
+        return 1
     (root / "data" / "out").mkdir(parents=True, exist_ok=True)
     models: dict[str, str] = config.get("models", {})
     try:
