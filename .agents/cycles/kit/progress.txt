@@ -14,3 +14,7 @@ Review notes for the retro (not failures): CHARTER.md "In scope" skill list omit
 Issue 005 (plugin.json description) is the only one left.
 005: plugin.json description now lists brainstorm ahead of grill; test added to tests/test_skills.py.
 All five Issues are done; the Cycle is ready for QA and Close.
+Review 2: 005 was staged but uncommitted; committed it as "005: Plugin names the Brainstorm" before reviewing main...HEAD.
+Review 2: Sample data none, so no Validation. pyright 0 errors, ruff check and ruff format clean (40 files), pytest 42 passed in 0.91s. Brainstorm body is 13 lines (cap 25).
+Review 2: all 9 Done when lines and every Acceptance box in 001-005 met; the diff stays inside the PRD's What changes plus the QA bug Issues 004-005.
+Review 2: wrote Issue 006 (bug): .claude-plugin/marketplace.json still has the old plugin description without brainstorm, so it no longer matches plugin.json.
