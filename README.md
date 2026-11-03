@@ -42,7 +42,7 @@ Nothing to build yet? Run `/kit:brainstorm` first (optional); it ends by pointin
 | Split | `/kit:to-issues`, approve the list |
 | Build | `kit run <area>` (agents build, validate on Sample data, review) |
 | QA | `kit once <area>`, then `/kit:qa` |
-| Close | `/kit:retro`, then `kit close <area>` (or `--abandon` if the PRD was wrong). After the merge, `kit once <area>` starts the next Cycle from the latest `main`, then `/kit:grill`. If the Area has no next Feature, run `/kit:brainstorm` after the retro |
+| Close | `/kit:retro`, then `kit close <area>` (or `--abandon` if the PRD was wrong). After the merge, `kit once <area>` starts the next Cycle from the latest `main`, then `/kit:grill` for the next Feature. If the Area has no next Feature, run `/kit:brainstorm` instead, also after the merge |
 
 Sample data goes in `data/<yyyy-mm-dd>-<name>/`, scrubbed by you. Agents read it and write only to `data/out/`.
 

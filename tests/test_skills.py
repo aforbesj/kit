@@ -65,3 +65,16 @@ def test_readme_names_brainstorm_in_start_and_close() -> None:
     close = next(line for line in text.splitlines() if line.startswith("| Close"))
     assert "/kit:brainstorm" in start
     assert "/kit:brainstorm" in close
+
+
+def test_retro_runs_brainstorm_after_close_and_merge() -> None:
+    text = (SKILLS / "retro/SKILL.md").read_text()
+    assert text.index("kit close <area>") < text.index("/kit:brainstorm")
+    assert "after the merge" in text
+
+
+def test_readme_close_row_brainstorms_after_merge() -> None:
+    text = (ROOT / "README.md").read_text()
+    close = next(line for line in text.splitlines() if line.startswith("| Close"))
+    assert close.index("After the merge") < close.index("/kit:brainstorm")
+    assert close.index("/kit:grill") < close.index("/kit:brainstorm")
