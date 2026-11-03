@@ -36,3 +36,8 @@ Test written first; it runs the printed discard: line from the root with shell=T
 011: Host venv unchanged after sandbox test. `test_sandbox_leaves_host_venv_alone` builds the real `cli.agent` docker command, swaps the agent for `uv sync`, and checks the host `.venv/bin/python` realpath and that the volume exists.
 It is skipped when `docker info` fails, so it has never run here (no Docker); the next pass should treat it as unverified. Test written after the Issue, not seen failing.
 All 11 Issues are done; next pass should print COMPLETE.
+Review (round 2): pyright 0 errors; ruff check clean; ruff format clean (48 files); pytest 97 passed, 1 skipped in 1.53s. No Sample data (PRD: none), so no validation run. No Docker on this machine, so the 011 test (host .venv unchanged) was skipped and is still unverified.
+Passed: 009 (Ctrl-C under hand-off returns 130, no second Stop reason; Ctrl-C in sandbox/workspace prints interrupted), 010 (keep:/discard: target .worktrees/<area>), 011 (Docker-gated test exists, skips cleanly), plus every round-1 Done when line. Diff stays within the PRD's scope.
+Failed, Issue written: 012 discard: uses `git restore .`, which leaves staged changes. In the "staged but not committed" case the discard line does nothing and the next run stops again. Reproduced in a scratch repo: after discard, `git status --porcelain` still shows A/A/M.
+Noted, no Issue: when `sandbox()` finds Docker missing or not running, `kit run` exits with a SystemExit message and no Stop reason line. That is outside the PRD's 5 ways a run can end.
+raised: Stop reason `not started` for sandbox/Docker failures, so every `kit run` ends with a Stop reason, even one that never reached a pass.
