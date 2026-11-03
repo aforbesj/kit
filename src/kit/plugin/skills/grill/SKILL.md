@@ -21,6 +21,6 @@ Reach a shared design with the human by asking, never by assuming.
 
 **Done when** the frontier is empty and the human confirms the shared understanding.
 
-Then, for a Charter grill, fill `CHARTER.md`: Problem, Users, In scope, Out of scope, Areas (each with an owner and its next Features). One page. For a Cycle grill, commit the `CONTEXT.md` and ADR changes with message `pick: <feature>` (the start of the Cycle's clock), decide whether Research or Prototype is needed, then tell the human to run `/kit:to-prd`.
+Then, for a Charter grill, fill `CHARTER.md`: Problem, Users, In scope, Out of scope, Areas (each with an owner and its next Features). One page. For a Cycle grill, stage `CONTEXT.md` and `docs/adr/` if they changed, then always commit with message `pick: <feature>` using `git commit --allow-empty`, even when nothing changed (the start of the Cycle's clock), decide whether Research or Prototype is needed, then tell the human to run `/kit:to-prd`.
 
 A Charter grill run after a Brainstorm may add Features and widen scope on a filled Charter. Only a Charter grill or a retro edits `CHARTER.md`, never mid-Cycle.

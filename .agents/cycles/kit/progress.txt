@@ -23,3 +23,6 @@ Spec passed: brainstorm (Appetite in step 1, filters in step 2 before Directions
 Not measured: docker is not available in the review shell, so TZ inside kit-sandbox was not checked live. Hands-off commits on this branch still read +0000 (likely the installed kit predates the fix); check on the next hands-off run.
 Note: qa counts `qa:` commits but no skill says to make one; it holds by convention today (5 on main).
 Issues written: 007 pick commit lands with nothing to commit (grill only commits when CONTEXT.md/ADR changed, so the retro's clock can lack a start).
+Issue 007: pick commit lands with nothing to commit
+grill now stages CONTEXT.md/docs/adr/ if changed and always commits `pick: <feature>` with `git commit --allow-empty`; test_grill_pick_commit_lands_with_no_changes.
+All Issues done; next pass prints COMPLETE.

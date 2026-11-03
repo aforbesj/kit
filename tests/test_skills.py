@@ -129,6 +129,12 @@ def test_grill_commits_pick_when_frontier_is_empty() -> None:
     assert "`pick: <feature>`" in _skill("grill")
 
 
+def test_grill_pick_commit_lands_with_no_changes() -> None:
+    text = _skill("grill")
+    assert "--allow-empty" in text
+    assert "pick: <feature>" in text
+
+
 def test_to_prd_template_has_appetite_line() -> None:
     text = _skill("to-prd")
     assert "Appetite:" in text
