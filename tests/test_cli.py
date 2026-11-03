@@ -547,6 +547,26 @@ def test_run_stops_when_a_pass_leaves_files(tmp_path: Path, capsys: pytest.Captu
     assert (root / "mine.txt").exists()
 
 
+def test_discard_clears_staged_changes(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    tree = cli.workspace(root, "core")
+    (tree / "staged_new.txt").write_text("x")
+    (tree / "kit.txt").write_text("tracked")
+    git(tree, "add", "-A")
+    git(tree, "commit", "-qm", "base")
+    (tree / "kit.txt").write_text("changed")
+    (tree / "staged_new.txt").write_text("y")
+    (tree / "another.txt").write_text("z")
+    git(tree, "add", "-A")
+    cli.stop_dirty("core", cli.dirty_files(tree), "pass 1")
+    out = capsys.readouterr().out
+    discard = next(line for line in out.splitlines() if line.startswith("discard:"))
+    (root / "mine.txt").write_text("mine")
+    subprocess.run(discard.removeprefix("discard:").strip(), shell=True, cwd=root, check=True)
+    assert cli.dirty_files(tree) == []
+    assert (root / "mine.txt").exists()
+
+
 def test_run_refuses_a_dirty_tree_at_start(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     root = product(tmp_path)
     (cli.workspace(root, "core") / "stray.txt").write_text("x")

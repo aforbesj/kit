@@ -41,3 +41,6 @@ Passed: 009 (Ctrl-C under hand-off returns 130, no second Stop reason; Ctrl-C in
 Failed, Issue written: 012 discard: uses `git restore .`, which leaves staged changes. In the "staged but not committed" case the discard line does nothing and the next run stops again. Reproduced in a scratch repo: after discard, `git status --porcelain` still shows A/A/M.
 Noted, no Issue: when `sandbox()` finds Docker missing or not running, `kit run` exits with a SystemExit message and no Stop reason line. That is outside the PRD's 5 ways a run can end.
 raised: Stop reason `not started` for sandbox/Docker failures, so every `kit run` ends with a Stop reason, even one that never reached a pass.
+012: Discard clears staged changes. `stop_dirty`'s discard: line is now `git -C <tree> reset -q --hard && git -C <tree> clean -fd`, so staged work from a failed commit is dropped too.
+Test written first (`test_discard_clears_staged_changes`, seen failing): stages a new file and a tracked change, runs the printed discard: from the root, checks the worktree is clean and a root file survives.
+All 12 Issues are done; next pass should print COMPLETE.
