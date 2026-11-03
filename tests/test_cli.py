@@ -589,3 +589,58 @@ def test_no_commit_by_run_or_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert seen
     for command in seen:
         assert command[:2] not in (["git", "add"], ["git", "commit"])
+
+
+@pytest.mark.parametrize(
+    ("installed", "wanted", "warns"),
+    [
+        ("0.1.0", "0.2.0", True),
+        ("0.9.0", "0.10.0", True),
+        ("0.10.0", "0.9.0", False),
+        ("0.2.0", "0.2.0", False),
+        ("0.3.0", "0.2.0", False),
+        ("0.1.0", None, False),
+        ("garbage", "0.2.0", False),
+    ],
+)
+def test_version_warning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, installed: str, wanted: str | None, warns: bool
+) -> None:
+    root = product(tmp_path)
+    config = json.loads((root / ".agents/kit.json").read_text())
+    config.pop("kit", None)
+    if wanted:
+        config["kit"] = wanted
+    (root / ".agents/kit.json").write_text(json.dumps(config))
+    monkeypatch.setattr(cli.metadata, "version", lambda _name: installed)
+    assert (cli.version_warning(root) is not None) is warns
+
+
+def test_version_warning_unreadable_version(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product(tmp_path)
+
+    def missing(_name: str) -> str:
+        raise cli.metadata.PackageNotFoundError
+
+    monkeypatch.setattr(cli.metadata, "version", missing)
+    assert cli.version_warning(root) is None
+
+
+def test_doctor_once_and_run_each_warn_once_and_keep_exit_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = product(tmp_path, complete_after=1)
+    config = json.loads((root / ".agents/kit.json").read_text())
+    config["kit"] = "99.0.0"
+    (root / ".agents/kit.json").write_text(json.dumps(config))
+    git(root, "commit", "-am", "version")
+    git(root, "config", "user.email", "ada@example.com")
+    monkeypatch.setattr(cli, "_ok", lambda _command: False)
+    monkeypatch.setattr(cli.shutil, "which", lambda name: f"/bin/{name}")
+
+    assert cli.doctor(root) == 0
+    assert capsys.readouterr().out.count("Warning: kit") == 1
+    assert cli.once(root, "core", None) == 0
+    assert capsys.readouterr().out.count("Warning: kit") == 1
+    assert cli.run(root, "core", max_iterations=3, local=True) == 0
+    assert capsys.readouterr().out.count("Warning: kit") == 1

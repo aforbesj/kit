@@ -17,3 +17,6 @@ Test written alongside the code; the fake agent writes an untracked stray.txt.
 003: Dirty tree gate at start and once. `run` checks `dirty_files` right after `workspace()` (after the Docker check, so the sandbox image step still precedes it) and returns 1 via `stop_dirty(..., "start")`; `once` calls `stop_dirty(..., "once")` after claude exits and returns claude's code.
 Remaining todo: 004, 006. 006 should reuse `venv_volume(root, cwd)`.
 Added a spy test over subprocess.run/Popen showing no git add/commit; tests written alongside the code.
+004: Version warning. `version_warning(root)` and `warn_version(root)` in cli.py compare `metadata.version("kit-cycle")` with kit.json "kit" as integer tuples; `doctor`, `once` and `run` print at most one line and never change exit codes.
+Remaining todo: 006 (reuse `venv_volume(root, cwd)`). Unparseable versions (e.g. "0.2.0rc1") produce no warning.
+Tests written alongside the code; they monkeypatch `cli.metadata.version`.

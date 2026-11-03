@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tomllib
 from datetime import date, datetime, timedelta
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,31 @@ def load_config(root: Path) -> Config:
         raise SystemExit("No .agents/kit.json here. Run `kit init` first.")
     config: Config = json.loads(path.read_text())
     return config
+
+
+def _numbers(version: str) -> tuple[int, ...] | None:
+    parts = version.split(".")
+    return tuple(int(p) for p in parts) if parts and all(p.isdigit() for p in parts) else None
+
+
+def version_warning(root: Path) -> str | None:
+    """One warning line when the installed kit is older than the Product's `kit.json`; else None."""
+    try:
+        wanted = json.loads((root / ".agents" / "kit.json").read_text()).get("kit")
+        installed = metadata.version("kit-cycle")
+    except (OSError, ValueError, AttributeError, metadata.PackageNotFoundError):
+        return None
+    if not isinstance(wanted, str):
+        return None
+    have, need = _numbers(installed), _numbers(wanted)
+    if have is None or need is None or have >= need:
+        return None
+    return f"Warning: kit {installed} is older than this Product's {wanted}. Fix: ./setup.sh in the Kit checkout"
+
+
+def warn_version(root: Path) -> None:
+    if message := version_warning(root):
+        print(message)
 
 
 def workspace(root: Path, area: str) -> Path:
@@ -278,6 +304,7 @@ def doctor(root: Path) -> int:
     """Print what this machine has and the fix for what it lacks. Fails only on what every Cycle needs."""
     kind = system()
     print(f"kit doctor ({kind})")
+    warn_version(root)
     missing = False
     for name, ok, required, fix in checks(root, kind):
         mark = "ok  " if ok else ("FAIL" if required else "skip")
@@ -339,6 +366,7 @@ def _last_line(output: str) -> str:
 def once(root: Path, area: str, issue: str | None) -> int:
     """A hands-on session in the Area's checkout: planning, or one named Issue."""
     config = load_config(root)
+    warn_version(root)
     cwd = workspace(root, area)
     models: dict[str, str] = config.get("models", {})
     if issue:
@@ -355,6 +383,7 @@ def once(root: Path, area: str, issue: str | None) -> int:
 def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
     """Hands-off Build: one Issue per pass until COMPLETE, then a fresh review."""
     config = load_config(root)
+    warn_version(root)
     if not local:
         sandbox(image_name(config))
     cwd = workspace(root, area)
