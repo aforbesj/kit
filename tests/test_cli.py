@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -156,6 +157,23 @@ def test_sandbox_run_passes_git_identity(tmp_path: Path) -> None:
     assert command[:2] == ["docker", "run"]
     assert "GIT_COMMITTER_NAME=Ada" in command
     assert "GIT_AUTHOR_EMAIL=ada@example.com" in command
+
+
+@pytest.mark.parametrize(
+    ("hours", "expected"),
+    [(-5, "<-0500>5"), (2, "<+0200>-2"), (5.5, "<+0530>-5:30"), (-3.5, "<-0330>3:30"), (0, "<+0000>0")],
+)
+def test_posix_tz_inverts_the_offset_sign(hours: float, expected: str) -> None:
+    assert cli.posix_tz(timedelta(hours=hours)) == expected
+
+
+def test_sandbox_run_passes_host_utc_offset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product(tmp_path)
+    monkeypatch.setattr(cli, "posix_tz", lambda _offset: "<-0500>5")
+
+    command = cli.agent(cli.load_config(root), root, root, "sonnet", "go", hands_off=True, local=False)
+
+    assert "TZ=<-0500>5" in command
 
 
 def test_run_without_docker_explains_instead_of_crashing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

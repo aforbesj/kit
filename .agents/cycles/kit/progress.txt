@@ -1,3 +1,6 @@
 Issue 005: ADR numbers are unique
 Renamed 0001-cycle-ends-at-merge.md to 0007 (heading # 7.), added uniqueness and rename tests in tests/test_skills.py.
 No other file referenced the old path; next ADR is 0008.
+Issue 006: Sandbox commits carry the host UTC offset
+Added posix_tz() in cli.py and a -e TZ= flag on the hands-off docker run; tests in tests/test_cli.py.
+Remaining todo: 001 (tracer, unblocks 002-004), then 002, 003, 004.
