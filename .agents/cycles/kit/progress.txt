@@ -5,3 +5,6 @@ Cap reached still returns 1; interrupted returns 130; agent failed returns the a
 005: Venv volume per worktree. `venv_volume(root, cwd)` in cli.py names `kit-venv-<product>-<area>`; `agent()` mounts it at VENV_PATH (/home/kit/venv) and sets UV_PROJECT_ENVIRONMENT.
 006 should reuse `venv_volume(root, cwd)` for `docker volume rm`. Product = root folder name, area = cwd (worktree) folder name.
 The Docker-available `.venv/bin/python` acceptance test was not written (no Docker here); only the command-shape test exists.
+007: Kit product loads worktree plugin. `plugin_args(root, cwd)` in cli.py returns `--plugin-dir <cwd>/src/kit/plugin` when root pyproject name is `kit-cycle`; `agent()` and the plain planning command in `once` include it.
+008 can reuse the same pyproject-name check (consider splitting out an `is_kit(root)` helper); the name is read with tomllib from root/pyproject.toml.
+The test was written alongside the code, not strictly before it.

@@ -178,6 +178,27 @@ def test_sandbox_mounts_a_venv_volume_per_worktree(tmp_path: Path) -> None:
     assert names == ["kit-venv-product-core", "kit-venv-product-other-area"]
 
 
+def test_plugin_dir_only_in_the_kit_product(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    config = cli.load_config(root)
+    cwd = root / "wt"
+    cwd.mkdir()
+    plugin = str(cwd.resolve() / "src" / "kit" / "plugin")
+
+    def commands() -> list[list[str]]:
+        return [
+            cli.agent(config, root, cwd, "sonnet", "go", hands_off=hands_off, local=local)
+            for hands_off, local in ((False, True), (True, True), (True, False))
+        ]
+
+    assert all("--plugin-dir" not in c for c in commands())
+    (root / "pyproject.toml").write_text('[project]\nname = "other"\n')
+    assert all("--plugin-dir" not in c for c in commands())
+    (root / "pyproject.toml").write_text('[project]\nname = "kit-cycle"\n')
+    for command in commands():
+        assert command[command.index("--plugin-dir") + 1] == plugin
+
+
 @pytest.mark.parametrize(
     ("hours", "expected"),
     [(-5, "<-0500>5"), (2, "<+0200>-2"), (5.5, "<+0530>-5:30"), (-3.5, "<-0330>3:30"), (0, "<+0000>0")],

@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -130,7 +131,7 @@ def standards(config: Config, cwd: Path) -> str:
 
 
 def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands_off: bool, local: bool) -> list[str]:
-    base: list[str] = list(config.get("agent", ["claude"]))
+    base: list[str] = [*config.get("agent", ["claude"]), *plugin_args(root, cwd)]
     if not hands_off:
         return [*base, "--permission-mode", "acceptEdits", "--model", model, text]
     if local:
@@ -149,6 +150,15 @@ def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands
 
 
 VENV_PATH = "/home/kit/venv"
+
+
+def plugin_args(root: Path, cwd: Path) -> list[str]:
+    """When the Product is the Kit, load the worktree's own plugin (ADR 0010)."""
+    try:
+        name = tomllib.loads((root / "pyproject.toml").read_text()).get("project", {}).get("name")
+    except (OSError, tomllib.TOMLDecodeError):
+        return []
+    return ["--plugin-dir", str(cwd.resolve() / "src" / "kit" / "plugin")] if name == "kit-cycle" else []
 
 
 def venv_volume(root: Path, cwd: Path) -> str:
@@ -302,7 +312,7 @@ def once(root: Path, area: str, issue: str | None) -> int:
         text = prompt("implement", area, cwd, f"Build Issue {issue}.")
         command = agent(config, root, cwd, models.get("implement", "sonnet"), text, hands_off=False, local=True)
     else:
-        command = [*config.get("agent", ["claude"]), "--model", models.get("plan", "opus")]
+        command = [*config.get("agent", ["claude"]), *plugin_args(root, cwd), "--model", models.get("plan", "opus")]
     return subprocess.run(command, check=False, cwd=cwd).returncode
 
 
