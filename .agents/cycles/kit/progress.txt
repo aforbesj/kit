@@ -43,3 +43,9 @@ Todo: 009 (qa commits `qa: <feature>` each round) is the last one.
 Issue 009: qa commits each round
 qa step 4 commits `qa: <feature>` once per round after qa.md and new Issues (--allow-empty if nothing changed); test_qa_commits_one_qa_commit_per_round.
 All Issues done; next pass prints COMPLETE.
+Review 3 (2026-11-03)
+Validation: PRD names no Sample data; nothing run against data/.
+Gates: pyright 0 errors; ruff check clean; ruff format clean (44 files); pytest 63 passed in 0.92s.
+Spec passed: all ten Done when lines hold. Retro now measures `pick:` to now (Issue 008, a QA-agreed change from the PRD's "to close:", since no close: commit exists at retro). qa step 4 commits `qa: <feature>` once per round after qa.md and Issues (Issue 009). Brainstorm body 15 lines <= 25. ADRs 0001-0007 unique. Diff outside .agents/ touches only What changes files plus CONTEXT.md (Appetite term).
+Appetite: 9 Issues against 6; QA round 2 next against 1. qa will ask the breaker question.
+Issues written: none.
