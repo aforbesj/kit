@@ -49,3 +49,6 @@ Gates: pyright 0 errors; ruff check clean; ruff format clean (44 files); pytest 
 Spec passed: all ten Done when lines hold. Retro now measures `pick:` to now (Issue 008, a QA-agreed change from the PRD's "to close:", since no close: commit exists at retro). qa step 4 commits `qa: <feature>` once per round after qa.md and Issues (Issue 009). Brainstorm body 15 lines <= 25. ADRs 0001-0007 unique. Diff outside .agents/ touches only What changes files plus CONTEXT.md (Appetite term).
 Appetite: 9 Issues against 6; QA round 2 next against 1. qa will ask the breaker question.
 Issues written: none.
+QA round 2 (2026-11-03)
+Appetite asked: round 2 against 1. Human's answer: neither; no problems found, PRD not wrong. Round only confirmed 008 and 009.
+Signed off.
