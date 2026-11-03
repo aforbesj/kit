@@ -8,7 +8,7 @@ import os
 import shutil
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -137,7 +137,7 @@ def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands
     repo = str(root.resolve())
     secrets = [arg for key in TOKENS if key in os.environ for arg in ("-e", key)]
     return [
-        "docker", "run", "--rm", *secrets, *git_identity(root),
+        "docker", "run", "--rm", *secrets, *git_identity(root), "-e", f"TZ={posix_tz(datetime.now().astimezone().utcoffset())}",
         "-v", f"{repo}:{repo}",
         "-v", f"{repo}/data:{repo}/data:ro",
         "-v", f"{repo}/data/out:{repo}/data/out",
@@ -158,6 +158,16 @@ def git_identity(root: Path) -> list[str]:
         if value:
             flags += [arg for role in ("AUTHOR", "COMMITTER") for arg in ("-e", f"GIT_{role}_{field.upper()}={value}")]
     return flags
+
+
+def posix_tz(offset: timedelta | None) -> str:
+    """The UTC offset as a POSIX TZ string, e.g. -0500 becomes <-0500>5 (POSIX inverts the sign)."""
+    minutes = round((offset or timedelta()).total_seconds() / 60)
+    sign = "+" if minutes >= 0 else "-"
+    hours, rest = divmod(abs(minutes), 60)
+    posix_sign = "-" if minutes > 0 else ""
+    clock = f"{hours}:{rest:02d}" if rest else str(hours)
+    return f"<{sign}{hours:02d}{rest:02d}>{posix_sign}{clock}"
 
 
 def _output(command: list[str], cwd: Path | None = None) -> str:

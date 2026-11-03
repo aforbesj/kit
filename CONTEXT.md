@@ -40,6 +40,9 @@ _Avoid_: ideation, discovery, exploration
 **Direction**: A broad way to address the problem, with its cost; not yet a design. A Brainstorm widens into many; the human picks one to grill.
 _Avoid_: option, solution, idea
 
+**Appetite**: What a Feature or Direction is worth before it is designed, in time, size and QA rounds. A Brainstorm sets it for a Direction, the Cycle grill for a Feature (a default if skipped). The retro measures the Cycle against it. Not a deadline.
+_Avoid_: estimate, budget, deadline
+
 **Gate**: A check work must pass to move on.
 _Avoid_: guardrail, policy
 
