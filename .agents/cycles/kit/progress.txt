@@ -20,3 +20,6 @@ Added a spy test over subprocess.run/Popen showing no git add/commit; tests writ
 004: Version warning. `version_warning(root)` and `warn_version(root)` in cli.py compare `metadata.version("kit-cycle")` with kit.json "kit" as integer tuples; `doctor`, `once` and `run` print at most one line and never change exit codes.
 Remaining todo: 006 (reuse `venv_volume(root, cwd)`). Unparseable versions (e.g. "0.2.0rc1") produce no warning.
 Tests written alongside the code; they monkeypatch `cli.metadata.version`.
+006: Close removes volume. `_free` in cli.py runs `docker volume rm <venv_volume(root, cwd)>` (check=False, output captured, OSError swallowed) on both merge and abandon paths.
+All 8 Issues are now done; next pass should print COMPLETE.
+Test written alongside the code; it fakes docker as missing, so only the command shape is checked, and the monkeypatch of `cli.checks` is a no-op guard (raising=False).

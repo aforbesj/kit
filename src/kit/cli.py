@@ -477,6 +477,10 @@ def close(root: Path, area: str, abandon: bool) -> int:
 def _free(root: Path, cwd: Path, branch: str, delete_branch: bool) -> None:
     if cwd.exists():
         git(root, "worktree", "remove", "--force", str(cwd))
+    try:
+        subprocess.run(["docker", "volume", "rm", venv_volume(root, cwd)], check=False, capture_output=True)
+    except OSError:
+        pass  # no Docker installed: nothing to remove
     if delete_branch:
         git(root, "branch", "-D", branch)
 

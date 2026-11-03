@@ -644,3 +644,24 @@ def test_doctor_once_and_run_each_warn_once_and_keep_exit_code(
     assert capsys.readouterr().out.count("Warning: kit") == 1
     assert cli.run(root, "core", max_iterations=3, local=True) == 0
     assert capsys.readouterr().out.count("Warning: kit") == 1
+
+
+@pytest.mark.parametrize("abandon", [True, False])
+def test_close_removes_venv_volume(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, abandon: bool) -> None:
+    root = product(tmp_path)
+    cli.workspace(root, "core")
+    seen: list[list[str]] = []
+    real = subprocess.run
+
+    def spy(command: Any, *args: Any, **kwargs: Any) -> Any:
+        if command[0] == "docker":
+            seen.append(command)
+            raise FileNotFoundError("docker")
+        return real(command, *args, **kwargs)
+
+    monkeypatch.setattr(cli.subprocess, "run", spy)
+    monkeypatch.setattr(cli, "checks", lambda *a, **k: True, raising=False)
+
+    cli.close(root, "core", abandon=abandon)
+
+    assert ["docker", "volume", "rm", "kit-venv-product-core"] in seen
