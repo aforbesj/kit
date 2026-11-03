@@ -321,9 +321,10 @@ def close(root: Path, area: str, abandon: bool) -> int:
         git(cwd, "push", "-q", "-u", "origin", branch)
         if shutil.which("gh"):
             subprocess.run(["gh", "pr", "create", "--fill", "--base", main, "--head", branch], check=False, cwd=cwd)
-        print("Merge with a merge commit once CI passes and you have signed off.")
+        merge = "Merge the PR with a merge commit once CI passes and you have signed off."
     else:
-        print(f"No remote. After sign-off: git merge --no-ff {branch}")
+        merge = f"No remote. After sign-off, merge: git merge --no-ff {branch}"
+    print(f"Next:\n  1. {merge}\n  2. kit once {area}\n  3. /kit:grill")
     _free(root, cwd, branch, delete_branch=False)
     return 0
 

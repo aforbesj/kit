@@ -13,3 +13,6 @@ Next: 005 and 007 are unblocked; 006 too (uv.lock drift still left uncommitted).
 005: close --abandon pushes the abandoned tag to origin and deletes cycle/<area> from origin when a remote exists.
 Added two tests in tests/test_cli.py (with remote, without); push failures are ignored so the local abandon always completes.
 Next: 006 and 007 are unblocked (uv.lock drift still left uncommitted).
+006: close prints numbered next steps (merge, kit once <area>, /kit:grill) in both remote and no-remote paths.
+Added two tests in tests/test_cli.py checking order of the printed steps.
+Next: only 007 is left (uv.lock drift still left uncommitted).

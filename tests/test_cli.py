@@ -344,3 +344,27 @@ def test_close_abandon_without_remote_keeps_tag_locally(tmp_path: Path) -> None:
 
     assert cli.close(root, "core", abandon=True) == 0
     assert git(root, "tag", "--list", "abandoned/core-*")
+
+
+def _assert_next_steps(out: str, merge: str, area: str) -> None:
+    steps = [merge, f"kit once {area}", "/kit:grill"]
+    positions = [out.find(step) for step in steps]
+    assert all(p >= 0 for p in positions), out
+    assert positions == sorted(positions)
+
+
+def test_close_prints_next_steps_with_remote(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    with_origin(tmp_path, root)
+    cli.workspace(root, "core")
+
+    assert cli.close(root, "core", abandon=False) == 0
+    _assert_next_steps(capsys.readouterr().out, "Merge", "core")
+
+
+def test_close_prints_next_steps_without_remote(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    cli.workspace(root, "core")
+
+    assert cli.close(root, "core", abandon=False) == 0
+    _assert_next_steps(capsys.readouterr().out, "git merge --no-ff cycle/core", "core")
