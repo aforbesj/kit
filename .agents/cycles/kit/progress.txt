@@ -16,3 +16,10 @@ Todo: 004 (brainstorm, body <= 25 lines) is the last one.
 Issue 004: Brainstorm weighs Directions against an Appetite
 brainstorm asks Appetite in step 1, filters before Directions, names meeting notes/transcripts, offers five to eight Directions incl. one with no software; 4 tests in tests/test_skills.py.
 All Issues done; next pass prints COMPLETE, then QA.
+Review (2026-11-03)
+Validation: PRD names no Sample data; nothing run against data/.
+Gates: pyright 0 errors; ruff check clean; ruff format clean (40 files); pytest 61 passed in 0.92s.
+Spec passed: brainstorm (Appetite in step 1, filters in step 2 before Directions, meeting notes/transcripts, five to eight incl. one with no software, body 15 lines <= 25, last line restates Direction/Appetite/user words and names /kit:grill); to-prd Appetite: line with (default); to-issues asks before writing/committing; qa asks "a new Issue, or was the PRD wrong?" before writing Issues; retro measures pick: to close:, Issues, qa: rounds with default; ADR numbers 0001-0007 unique, 0007-cycle-ends-at-merge.md heading "# 7."; docker run passes -e TZ=posix_tz(host offset), posix_tz correct for -5, +2, +5:30, -3:30, 0.
+Not measured: docker is not available in the review shell, so TZ inside kit-sandbox was not checked live. Hands-off commits on this branch still read +0000 (likely the installed kit predates the fix); check on the next hands-off run.
+Note: qa counts `qa:` commits but no skill says to make one; it holds by convention today (5 on main).
+Issues written: 007 pick commit lands with nothing to commit (grill only commits when CONTEXT.md/ADR changed, so the retro's clock can lack a start).
