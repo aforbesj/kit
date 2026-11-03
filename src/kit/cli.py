@@ -258,6 +258,9 @@ def close(root: Path, area: str, abandon: bool) -> int:
     """End a Cycle: tag it as abandoned, or pass the merge Gate and hand it to a PR."""
     cwd = root / ".worktrees" / area
     branch = f"cycle/{area}"
+    if cwd.exists() and git(cwd, "status", "--porcelain"):
+        print(f"Uncommitted changes in {cwd}. Commit or discard them, then close again.")
+        return 1
     if abandon:
         tag = f"abandoned/{area}-{date.today().isoformat()}"
         git(root, "tag", tag, branch)

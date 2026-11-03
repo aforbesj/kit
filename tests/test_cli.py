@@ -180,3 +180,15 @@ def test_doctor_fails_only_on_required(tmp_path: Path, monkeypatch: pytest.Monke
 
 def test_sandbox_image_ships_with_the_package() -> None:
     assert (cli.SANDBOX / "Dockerfile").is_file()
+
+
+@pytest.mark.parametrize("abandon", [False, True])
+def test_close_refuses_dirty_checkout(tmp_path: Path, abandon: bool) -> None:
+    root = product(tmp_path)
+    ws = cli.workspace(root, "core")
+    (ws / "scratch.txt").write_text("unsaved")
+
+    assert cli.close(root, "core", abandon=abandon) == 1
+    assert (ws / "scratch.txt").read_text() == "unsaved"
+    assert git(root, "branch", "--list", "cycle/core")
+    assert not git(root, "tag", "--list", "abandoned/*")
