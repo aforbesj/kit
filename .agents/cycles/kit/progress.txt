@@ -10,3 +10,6 @@ Todo: 002, 003 (blocked only by 001, now free), then 004 (brainstorm, keep body 
 Issue 002: Split stops past the Appetite
 to-issues step 3 compares the split with the PRD Appetite (default named) and asks before writing; test in tests/test_skills.py.
 Todo: 003 (qa), then 004 (brainstorm, body <= 25 lines).
+Issue 003: QA stops past the Appetite
+qa step 2 counts `qa:` rounds against the Appetite (default named), asks "a new Issue, or was the PRD wrong?" before writing Issues, records the answer in progress.txt; test in tests/test_skills.py.
+Todo: 004 (brainstorm, body <= 25 lines) is the last one.

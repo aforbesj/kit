@@ -148,3 +148,13 @@ def test_to_issues_stops_before_committing_when_split_passes_appetite() -> None:
     assert DEFAULT_APPETITE in text
     assert "shrink the split, or was the grill too big?" in text
     assert text.index("Appetite") < text.index("Write each approved Issue")
+
+
+def test_qa_asks_when_a_round_passes_appetite_before_writing_issues() -> None:
+    text = _skill("qa")
+    assert "Appetite" in text
+    assert "`qa:`" in text
+    assert DEFAULT_APPETITE in text
+    assert "a new Issue, or was the PRD wrong?" in text
+    assert "`progress.txt`" in text.split("was the PRD wrong?")[1]
+    assert text.index("was the PRD wrong?") < text.index("write a new Issue")
