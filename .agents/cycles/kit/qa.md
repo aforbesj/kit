@@ -47,6 +47,6 @@ Bugs (new Issues):
 - 005: `plugin.json` description must name brainstorm (consistency with the other skills it lists).
 
 For the retro (not this PRD):
-- The Kit's own `CHARTER.md` In scope list omits brainstorm; only a retro edits it mid-Cycle (ADR 0006).
+- The Kit's own `CHARTER.md` In scope list omits brainstorm; the Charter is not edited mid-Cycle (ADR 0006), so the retro fixes it.
 - QA should be agent-driven: an agent launches what was built, follows the qa.md steps, explores, and reports findings before the human judges. Today the human had to work out how to load the branch's CLI and plugin (`uv run kit init`, `claude --plugin-dir`). Applies to every Cycle, not just skills: UIs, CLIs, apps.
 - Naming a Product after a Brainstorm: the folder is made by `kit init` before the Brainstorm settles what it is, so the name is a guess.
