@@ -538,6 +538,13 @@ def test_run_stops_when_a_pass_leaves_files(tmp_path: Path, capsys: pytest.Captu
     assert "keep:" in out and "discard:" in out and "then: kit run core" in out
     assert (tmp_path / "dirty.n").read_text() == "1"
     assert out.splitlines()[-1].startswith("Stop reason: dirty tree: ")
+    keep = next(line for line in out.splitlines() if line.startswith("keep:"))
+    discard = next(line for line in out.splitlines() if line.startswith("discard:"))
+    assert ".worktrees/core" in keep and ".worktrees/core" in discard
+    (root / "mine.txt").write_text("mine")
+    subprocess.run(discard.removeprefix("discard:").strip(), shell=True, cwd=root, check=True)
+    assert not (root / ".worktrees/core/stray.txt").exists()
+    assert (root / "mine.txt").exists()
 
 
 def test_run_refuses_a_dirty_tree_at_start(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

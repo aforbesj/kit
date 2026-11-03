@@ -347,8 +347,9 @@ def stop_dirty(area: str, files: list[str], where: str) -> None:
     print("dirty tree:")
     for name in files:
         print(f"  {name}")
-    print('keep:    git add -A && git commit -m "<n>: <title>"')
-    print("discard: git restore . && git clean -fd")
+    tree = f".worktrees/{area}"
+    print(f'keep:    git -C {tree} add -A && git -C {tree} commit -m "<n>: <title>"')
+    print(f"discard: git -C {tree} restore . && git -C {tree} clean -fd")
     print(f"then: kit run {area}")
     stop("dirty tree", f"{where} left {len(files)} uncommitted: {', '.join(files)}")
 

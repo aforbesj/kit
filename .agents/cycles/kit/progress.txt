@@ -30,3 +30,6 @@ raised: `kit status <area>` prints the last Stop reason and the dirty files with
 009: Ctrl-C ends with the Stop reason. `run` now wraps sandbox, workspace and the start gate in the same KeyboardInterrupt handler; `hand_off` returns 130 on Ctrl-C (child already printed the Stop reason; parent prints one only if interrupted in workspace()).
 Remaining todo: 010, 011.
 Tests written alongside the code, not strictly first.
+010: Dirty-tree commands name the worktree. `stop_dirty` now prints `git -C .worktrees/<area> ...` in keep: and discard:, so pasting from the root acts on the worktree only.
+Remaining todo: 011 (Docker-gated venv test). Start gate and `once` share stop_dirty, so they print the same lines.
+Test written first; it runs the printed discard: line from the root with shell=True and checks a root file survives.
