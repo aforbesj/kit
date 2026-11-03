@@ -26,3 +26,10 @@ Issues written: 007 pick commit lands with nothing to commit (grill only commits
 Issue 007: pick commit lands with nothing to commit
 grill now stages CONTEXT.md/docs/adr/ if changed and always commits `pick: <feature>` with `git commit --allow-empty`; test_grill_pick_commit_lands_with_no_changes.
 All Issues done; next pass prints COMPLETE.
+Review 2 (2026-11-03)
+Validation: PRD names no Sample data; nothing run against data/.
+Gates: pyright 0 errors; ruff check clean; ruff format clean (41 files); pytest 62 passed in 0.92s.
+Spec passed: all ten Done when lines hold, incl. Issue 007 fix (grill stages CONTEXT.md/docs/adr/ and commits `pick: <feature>` with --allow-empty; test pins it). Brainstorm body 15 lines <= 25. ADRs 0001-0007 unique. Diff outside .agents/ touches only files the PRD's What changes names, plus CONTEXT.md (Appetite term, from the grill).
+TZ: review shell's offset is +0000 (date +%z), so the +0000 stamps on hands-off commits match the host; not a fault. Docker not available here, so TZ inside kit-sandbox not checked live.
+Appetite: 7 Issues against an Appetite of 6 (one review-found bug); the retro should note it.
+Issues written: none.
