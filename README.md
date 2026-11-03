@@ -48,4 +48,4 @@ Areas build in parallel: run `kit run <area>` once per Area. Each gets its own c
 
 ## Change the Kit
 
-The Kit is a Product too. Retro findings about the Kit become its next Cycles. Bump the version in `pyproject.toml` and `src/kit/plugin/.claude-plugin/plugin.json` together.
+The Kit is a Product too. Retro findings about the Kit become its next Cycles. To release, bump the version in `pyproject.toml`, `src/kit/plugin/.claude-plugin/plugin.json`, both copies of `.agents/kit.json` (this repo's and the template's), then run `uv lock`. `tests/test_version.py` fails if any of them differ. Merging to `main` tags `v<version>`.
