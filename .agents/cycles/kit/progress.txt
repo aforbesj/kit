@@ -35,3 +35,7 @@ Notes, not Issues: still open from the last review, `close --abandon` pushes wit
 009: every signature in src and tests is typed, and a test guards it.
 Added test_every_signature_is_typed (ast walk) to tests/test_format.py and annotated test_ruff_format_is_clean -> None.
 Next: no Issues left (uv.lock drift still left uncommitted).
+review (3): Sample data none, so no validation run.
+Passed: pyright 0 errors; ruff check clean; ruff format --check clean (38 files); pytest 30 passed in 0.91s. Every Done when line has a matching passing test; Issues 001-009 meet their Acceptance. Every signature in src and tests is typed. The diff stays inside the PRD's scope (CHARTER.md comes from the grill commit; uv.lock drift is uncommitted and not in the diff).
+Issues written: none.
+Notes, not Issues: `close --abandon` still pushes without capturing output (git stderr on a missing remote branch, still returns 0). `close --abandon` checks for any remote but pushes to `origin`, whereas `workspace` checks for `origin` by name; harmless while the Kit assumes `origin`.
