@@ -13,3 +13,6 @@ Todo: 003 (qa), then 004 (brainstorm, body <= 25 lines).
 Issue 003: QA stops past the Appetite
 qa step 2 counts `qa:` rounds against the Appetite (default named), asks "a new Issue, or was the PRD wrong?" before writing Issues, records the answer in progress.txt; test in tests/test_skills.py.
 Todo: 004 (brainstorm, body <= 25 lines) is the last one.
+Issue 004: Brainstorm weighs Directions against an Appetite
+brainstorm asks Appetite in step 1, filters before Directions, names meeting notes/transcripts, offers five to eight Directions incl. one with no software; 4 tests in tests/test_skills.py.
+All Issues done; next pass prints COMPLETE, then QA.

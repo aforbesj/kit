@@ -158,3 +158,26 @@ def test_qa_asks_when_a_round_passes_appetite_before_writing_issues() -> None:
     assert "a new Issue, or was the PRD wrong?" in text
     assert "`progress.txt`" in text.split("was the PRD wrong?")[1]
     assert text.index("was the PRD wrong?") < text.index("write a new Issue")
+
+
+def test_brainstorm_asks_appetite_then_filters_before_directions() -> None:
+    text = "\n".join(_body(_brainstorm()))
+    assert "Appetite" in text
+    assert text.index("Appetite") < text.index("rules Directions out") < text.index("five to eight")
+
+
+def test_brainstorm_names_meeting_notes_and_transcripts_as_evidence() -> None:
+    text = _brainstorm().lower()
+    assert "meeting notes" in text and "transcripts" in text
+
+
+def test_brainstorm_offers_five_to_eight_directions_including_no_software() -> None:
+    text = _brainstorm()
+    assert "five to eight" in text
+    assert "builds no software" in text
+
+
+def test_brainstorm_last_line_restates_direction_appetite_and_words() -> None:
+    last = _body(_brainstorm())[-1]
+    assert "Direction" in last and "Appetite" in last and "words" in last
+    assert "/kit:grill" in last
