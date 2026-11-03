@@ -7,3 +7,6 @@ Next: 002 and 003 are unblocked; 002 should reuse _latest_main and its fetch (uv
 002: workspace removes a merged cycle/<area> (local and remote) and starts fresh; reopens an unmerged one with "Cycle still open" message.
 Added _merged (git merge-base --is-ancestor against _latest_main) in cli.py; workspace now calls _latest_main first, so fetch happens once per creation.
 Next: 003 and 005 are unblocked; 003 can fast-forward root main after the fetch in _latest_main (uv.lock drift still left uncommitted).
+003: _latest_main fast-forwards the root's main to origin/main after a successful fetch when root is clean and on main.
+Added three tests in tests/test_cli.py (clean, dirty, other branch) with a push_ahead helper.
+Next: 005 and 007 are unblocked; 006 too (uv.lock drift still left uncommitted).

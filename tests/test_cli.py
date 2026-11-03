@@ -273,3 +273,55 @@ def test_workspace_reopens_unmerged_branch(tmp_path: Path, capsys: pytest.Captur
     assert git(ws, "rev-parse", "HEAD") == tip
     assert git(origin, "rev-parse", "cycle/core") == tip
     assert "Cycle still open: not merged into `main`" in capsys.readouterr().out
+
+
+def push_ahead(tmp_path: Path, origin: Path) -> Path:
+    other = tmp_path / "other"
+    git(tmp_path, "clone", "-q", "-b", "main", str(origin), str(other))
+    (other / "new.txt").write_text("x")
+    git(other, "add", "-A")
+    git(other, "commit", "-m", "ahead")
+    git(other, "push", "-q", "origin", "HEAD:main")
+    return other
+
+
+def test_workspace_fast_forwards_clean_root_on_main(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    other = push_ahead(tmp_path, origin)
+    git(root, "branch", "-M", "main")
+
+    cli.workspace(root, "core")
+
+    assert git(root, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
+
+
+def test_workspace_leaves_dirty_root_alone(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    other = push_ahead(tmp_path, origin)
+    git(root, "branch", "-M", "main")
+    before = git(root, "rev-parse", "HEAD")
+    (root / "scratch.txt").write_text("wip")
+
+    ws = cli.workspace(root, "core")
+
+    assert git(root, "rev-parse", "HEAD") == before
+    assert (root / "scratch.txt").read_text() == "wip"
+    assert git(ws, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
+
+
+def test_workspace_leaves_root_on_other_branch_alone(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    other = push_ahead(tmp_path, origin)
+    git(root, "branch", "-M", "main")
+    git(root, "checkout", "-q", "-b", "side")
+    before = git(root, "rev-parse", "HEAD")
+
+    ws = cli.workspace(root, "core")
+
+    assert git(root, "rev-parse", "HEAD") == before
+    assert git(root, "branch", "--show-current") == "side"
+    assert git(root, "rev-parse", "main") == before
+    assert git(ws, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
