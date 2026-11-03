@@ -66,7 +66,14 @@ def test_retro_ranks_features_by_raises() -> None:
 
 def test_skills_record_raises() -> None:
     for name in ("grill", "implement", "review", "qa"):
-        assert "append `raised: <idea>` to `progress.txt`" in _skill(name), name
+        target = "`.agents/cycles/<area>/progress.txt`" if name == "grill" else "`progress.txt`"
+        assert f"append `raised: <idea>` to {target}" in _skill(name), name
+
+
+def test_grill_raises_go_to_the_cycle_progress() -> None:
+    text = _skill("grill")
+    assert "append `raised: <idea>` to `.agents/cycles/<area>/progress.txt`" in text
+    assert "create it if missing" in text
 
 
 ROOT = Path(__file__).parent.parent
