@@ -56,3 +56,6 @@ Passed: 013 (`dirty_files` returns `['tracked.txt']` for an unstaged edit; check
 Noted, no Issue: 013's Acceptance also asked for a `kit run`-level test on a tracked-file edit. None was added. The behavior is correct (probe above), and the unit test covers the one function that path uses, so a gap in tests alone doesn't justify a fifth QA round over an appetite of 2.
 No Issues written.
 raised: Docker-gated tests run before Close, on a host with Docker; a test skipped in every review hid a broken sandbox volume until QA
+014: Sandbox venv volume writable. Dockerfile now creates /home/kit/venv after `USER kit`; `sandbox()` runs `docker run --rm <image> test -d /home/kit/venv` on an existing image and rebuilds it when that fails.
+Docker is not installed here, so the touch-in-new-volume Verify and `test_sandbox_leaves_host_venv_alone` are still unrun; the new rebuild test fakes `_ok`/`subprocess.run`. Treat both as unverified.
+Remaining todo: 015 (start gate wording). Test written after the code.

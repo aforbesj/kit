@@ -11,3 +11,5 @@ RUN apt-get update \
 # Claude Code refuses to skip permission prompts as root.
 RUN useradd --create-home kit
 USER kit
+# Docker copies this folder's owner into each new named volume mounted here (the venv).
+RUN mkdir /home/kit/venv

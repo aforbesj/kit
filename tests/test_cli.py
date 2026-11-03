@@ -757,3 +757,21 @@ def test_dirty_files_keeps_first_character_of_modified_tracked_file(tmp_path: Pa
     git(tree, "commit", "-qm", "base")
     (tree / "tracked.txt").write_text("b")
     assert cli.dirty_files(tree) == ["tracked.txt"]
+
+
+def test_sandbox_rebuilds_an_image_without_the_venv_folder(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_ok(command: list[str]) -> bool:
+        calls.append(command)
+        return "test" not in command
+
+    monkeypatch.setattr(cli.shutil, "which", lambda _: "/usr/bin/docker")
+    monkeypatch.setattr(cli, "_ok", fake_ok)
+    monkeypatch.setattr(cli.subprocess, "run", lambda command, **_: calls.append(command))
+    cli.sandbox("kit-sandbox")
+    assert calls[-1][:2] == ["docker", "build"]
+    assert "USER kit\n" in (cli.SANDBOX / "Dockerfile").read_text()
+    assert (cli.SANDBOX / "Dockerfile").read_text().index("USER kit") < (cli.SANDBOX / "Dockerfile").read_text().index(
+        "mkdir /home/kit/venv"
+    )

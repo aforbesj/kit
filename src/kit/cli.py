@@ -267,7 +267,11 @@ def sandbox(image: str) -> None:
         raise SystemExit("Docker is not running. Start it, or use `kit run --local` to skip the sandbox.")
     if not _ok(["docker", "image", "inspect", image]):
         print(f"Building the sandbox image {image} (first run only)...")
-        subprocess.run(["docker", "build", "-t", image, str(SANDBOX)], check=True)
+    elif _ok(["docker", "run", "--rm", image, "test", "-d", VENV_PATH]):
+        return
+    else:
+        print(f"Rebuilding the sandbox image {image} (it lacks {VENV_PATH})...")
+    subprocess.run(["docker", "build", "-t", image, str(SANDBOX)], check=True)
 
 
 def system() -> str:
