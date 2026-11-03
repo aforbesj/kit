@@ -32,3 +32,6 @@ Passed: pyright 0 errors; ruff check clean; ruff format --check clean (37 files)
 Failed: `tests/test_format.py` `test_ruff_format_is_clean()` has no return type, against "type every function signature" (pyright strict covers only `src`, so it passed).
 Issues written: 009 type every signature.
 Notes, not Issues: still open from the last review, `close --abandon` pushes without capturing output, so a missing remote branch prints git's stderr; it still returns 0.
+009: every signature in src and tests is typed, and a test guards it.
+Added test_every_signature_is_typed (ast walk) to tests/test_format.py and annotated test_ruff_format_is_clean -> None.
+Next: no Issues left (uv.lock drift still left uncommitted).
