@@ -16,3 +16,6 @@ Next: 006 and 007 are unblocked (uv.lock drift still left uncommitted).
 006: close prints numbered next steps (merge, kit once <area>, /kit:grill) in both remote and no-remote paths.
 Added two tests in tests/test_cli.py checking order of the printed steps.
 Next: only 007 is left (uv.lock drift still left uncommitted).
+007: retro removes the finished Feature from CHARTER.md and names the next; README Close step describes merge, kit once, /kit:grill.
+Added retro SKILL.md instruction and a test reading it; CONTEXT.md already said a Cycle ends when its Cycle Branch merges.
+Next: no Issues left (uv.lock drift still left uncommitted).
