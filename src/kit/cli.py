@@ -246,17 +246,37 @@ def doctor(root: Path) -> int:
     return 1 if missing else 0
 
 
-def stream(command: list[str], cwd: Path) -> str:
-    """Run a command, echo its output live, and return it. Stops kit on failure."""
+def stream(command: list[str], cwd: Path) -> tuple[str, int]:
+    """Run a command, echo its output live, and return its output and exit code."""
     process = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     assert process.stdout is not None
     lines: list[str] = []
     for line in process.stdout:
         sys.stdout.write(line)
         lines.append(line)
-    if process.wait() != 0:
-        raise SystemExit(process.returncode)
-    return "".join(lines)
+    return "".join(lines), process.wait()
+
+
+def stop(category: str, detail: str) -> None:
+    """Print the Stop reason: why `kit run` ended. Always the last line."""
+    print(f"Stop reason: {category}: {detail or 'no detail'}")
+
+
+def _issues(cwd: Path, area: str) -> list[Path]:
+    return sorted((cwd / ".agents" / "cycles" / area / "issues").glob("*.md"))
+
+
+def _done(cwd: Path, area: str) -> int:
+    return sum("status: done" in path.read_text() for path in _issues(cwd, area))
+
+
+def _last_issue(cwd: Path, area: str) -> str:
+    issues = _issues(cwd, area)
+    return max(issues, key=lambda path: path.stat().st_mtime).stem if issues else "none"
+
+
+def _last_line(output: str) -> str:
+    return next((line.strip() for line in reversed(output.splitlines()) if line.strip()), "no output")
 
 
 def once(root: Path, area: str, issue: str | None) -> int:
@@ -280,19 +300,32 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
     cwd = workspace(root, area)
     (root / "data" / "out").mkdir(parents=True, exist_ok=True)
     models: dict[str, str] = config.get("models", {})
-    for _ in range(max_iterations):
-        build = prompt("implement", area, cwd)
-        output = stream(
-            agent(config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local), cwd
-        )
-        if COMPLETE not in output:
-            continue
-        check = prompt("review", area, cwd, standards(config, cwd))
-        output = stream(agent(config, root, cwd, models.get("review", "opus"), check, hands_off=True, local=local), cwd)
-        if CLEAN in output:
-            print(f"Build done. Next: `kit once {area}` and run /kit:qa.")
-            return 0
-    print(f"Stopped after {max_iterations} iterations. Check progress.txt, then run again.")
+    try:
+        for _ in range(max_iterations):
+            build = prompt("implement", area, cwd)
+            output, code = stream(
+                agent(config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local), cwd
+            )
+            if code != 0:
+                stop("agent failed", f"implement exited {code}: {_last_line(output)}")
+                return code
+            if COMPLETE not in output:
+                continue
+            check = prompt("review", area, cwd, standards(config, cwd))
+            output, code = stream(
+                agent(config, root, cwd, models.get("review", "opus"), check, hands_off=True, local=local), cwd
+            )
+            if code != 0:
+                stop("agent failed", f"review exited {code}: {_last_line(output)}")
+                return code
+            if CLEAN in output:
+                print(f"Build done. Next: `kit once {area}` and run /kit:qa.")
+                stop("complete", f"{_done(cwd, area)} Issues done, review clean")
+                return 0
+    except KeyboardInterrupt:
+        stop("interrupted", "Ctrl-C")
+        return 130
+    stop("cap reached", f"{max_iterations} passes, last Issue {_last_issue(cwd, area)}")
     return 1
 
 

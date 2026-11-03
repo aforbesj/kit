@@ -392,3 +392,53 @@ def test_retro_skill_removes_finished_feature_from_charter() -> None:
     text = (Path(__file__).parent.parent / "src/kit/plugin/skills/retro/SKILL.md").read_text()
     assert "Remove the finished Feature" in text
     assert "name the next one" not in text
+
+
+def last_line(capsys: pytest.CaptureFixture[str]) -> str:
+    return capsys.readouterr().out.strip().splitlines()[-1]
+
+
+def test_stop_reason_complete(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path, complete_after=1)
+
+    assert cli.run(root, "core", max_iterations=5, local=True) == 0
+    line = last_line(capsys)
+    assert line.startswith("Stop reason: complete: ")
+    assert "review clean" in line
+
+
+def test_stop_reason_cap_reached(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path, complete_after=99)
+
+    assert cli.run(root, "core", max_iterations=2, local=True) != 0
+    line = last_line(capsys)
+    assert line.startswith("Stop reason: cap reached: ")
+    assert "2 passes" in line
+
+
+def test_stop_reason_agent_failed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+    failing = tmp_path / "failing.py"
+    failing.write_text("import sys\nprint('boom happened')\nsys.exit(3)\n")
+    config = json.loads((root / ".agents/kit.json").read_text())
+    config["agent"] = [sys.executable, str(failing)]
+    (root / ".agents/kit.json").write_text(json.dumps(config))
+
+    assert cli.run(root, "core", max_iterations=2, local=True) == 3
+    line = last_line(capsys)
+    assert line.startswith("Stop reason: agent failed: ")
+    assert "implement" in line and "3" in line and "boom happened" in line
+
+
+def test_stop_reason_interrupted(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = product(tmp_path)
+
+    def interrupt(command: list[str], cwd: Path) -> tuple[str, int]:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "stream", interrupt)
+
+    assert cli.run(root, "core", max_iterations=2, local=True) != 0
+    assert last_line(capsys) == "Stop reason: interrupted: Ctrl-C"

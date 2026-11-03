@@ -1,1 +1,4 @@
 raised: fact lookups (grill Explore, Research) run on the cheapest model that is enough, set in kit.json models (e.g. "lookup": "haiku")
+001: Stop reason on every run. `stream` now returns (output, exit code); `run` prints `Stop reason: <category>: <detail>` via `stop()` for complete, cap reached, agent failed, interrupted.
+Helpers in cli.py: stop(category, detail), _done, _last_issue, _last_line. 002 adds the `dirty tree` category by calling stop() after each pass.
+Cap reached still returns 1; interrupted returns 130; agent failed returns the agent's exit code.
