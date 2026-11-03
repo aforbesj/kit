@@ -10,3 +10,6 @@ Next: 004 only needs README Pick/Close rows plus a test; template CHARTER.md and
 Issue 004: README rows and size check
 README Pick row names the Top 3, Close row names re-ranking by Raises; test added; all kit.json commands and the SKILL.md growth check pass.
 Next: all Issues done; the retro seeds counts in CHARTER.md and renames the Feature.
+Review: Rank the next Features by how often they're raised
+Passed: pyright 0 errors, ruff check and format clean, pytest 68 passed (0.92s). SKILL.md growth since pick: grill +2, implement +2, qa +2, review +2, retro +1, others 0 (all ≤3). Done when lines 1-8 met on the wording; README, template CHARTER.md, ADR 0008 and CONTEXT.md (Raise) match the PRD; no CLI change. Sample data: none, so no validation run.
+Issues written: 005 (grill's raised: line has no Cycle path and runs before the Cycle folder exists, so grill Raises can miss the retro).
