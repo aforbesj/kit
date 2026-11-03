@@ -30,6 +30,8 @@ kit init my-product      # creates the folder and adds the template; never overw
 cd my-product && claude  # then: /kit:grill  (the Charter grill)
 ```
 
+Nothing to build yet? Run `/kit:brainstorm` first (optional); it ends by pointing you to `/kit:grill`.
+
 ## Run a Cycle
 
 | Phase | Do |
@@ -40,7 +42,7 @@ cd my-product && claude  # then: /kit:grill  (the Charter grill)
 | Split | `/kit:to-issues`, approve the list |
 | Build | `kit run <area>` (agents build, validate on Sample data, review) |
 | QA | `kit once <area>`, then `/kit:qa` |
-| Close | `/kit:retro`, then `kit close <area>` (or `--abandon` if the PRD was wrong). After the merge, `kit once <area>` starts the next Cycle from the latest `main`, then `/kit:grill` |
+| Close | `/kit:retro`, then `kit close <area>` (or `--abandon` if the PRD was wrong). After the merge, `kit once <area>` starts the next Cycle from the latest `main`, then `/kit:grill`. If the Area has no next Feature, run `/kit:brainstorm` after the retro |
 
 Sample data goes in `data/<yyyy-mm-dd>-<name>/`, scrubbed by you. Agents read it and write only to `data/out/`.
 

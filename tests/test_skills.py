@@ -47,3 +47,21 @@ def test_retro_points_empty_area_to_brainstorm() -> None:
     text = (SKILLS / "retro/SKILL.md").read_text()
     assert "/kit:brainstorm" in text
     assert "Remove the finished Feature from `CHARTER.md` and name the next one" in text
+
+
+ROOT = Path(__file__).parent.parent
+
+
+def test_claude_md_copies_match_and_name_brainstorm() -> None:
+    a = (ROOT / "CLAUDE.md").read_text()
+    assert a == (ROOT / "src/kit/template/CLAUDE.md").read_text()
+    phases = next(line for line in a.splitlines() if line.startswith("Phases:"))
+    assert "Brainstorm" in phases
+
+
+def test_readme_names_brainstorm_in_start_and_close() -> None:
+    text = (ROOT / "README.md").read_text()
+    start = text.split("## Start a Product")[1].split("## Run a Cycle")[0]
+    close = next(line for line in text.splitlines() if line.startswith("| Close"))
+    assert "/kit:brainstorm" in start
+    assert "/kit:brainstorm" in close

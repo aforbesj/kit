@@ -4,3 +4,5 @@ Issue 001 was mode: hands-on but named explicitly, so it was built here.
 002: Template CHARTER.md now says only a Charter grill or a retro edits it; retro skill points to /kit:brainstorm when an Area has no next Feature (tests added to tests/test_skills.py).
 Retro table row for CHARTER.md also reworded to 'only a Charter grill or the retro edits it'.
 Next: Issue 003 (docs: Phases line in both CLAUDE.md files, README) is the only one left.
+003: Phases line in both CLAUDE.md files now names Brainstorm and Charter grill; README names /kit:brainstorm in Start a Product and Close; tests added to tests/test_skills.py.
+All three Issues are done; the Cycle is ready for QA and Close.
