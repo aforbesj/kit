@@ -1,10 +1,10 @@
 # QA: Brainstorm what to build before a Charter grill
 
-QA round 2, after bug Issues 004-006.
+QA round 3, after bug Issue 007.
 
 ## Done when
 
-| Done when | Result (from `progress.txt` Review 3, re-run at QA) |
+| Done when | Result (from `progress.txt` Review 4, re-run at QA) |
 |---|---|
 | `brainstorm/SKILL.md` exists, `name: brainstorm`, `disable-model-invocation: true` | Met (001; test in `tests/test_skills.py`) |
 | Brainstorm names `/kit:grill` as last step, no instruction to write a file | Met (001) |
@@ -16,10 +16,11 @@ QA round 2, after bug Issues 004-006.
 | `README.md` names `/kit:brainstorm` in Start a Product and Close | Met (003, order fixed in 004) |
 | pyright, ruff check, pytest pass | Met: pyright 0 errors, ruff clean, pytest 43 passed (re-run at QA) |
 
-Bug Issues from round 1:
+Bug Issues from rounds 1-2:
 - 004: Brainstorm runs after `kit close` and the merge, from the latest `main` (retro skill + README Close row). Done.
 - 005: `plugin.json` description names brainstorm. Done.
 - 006 (found at Review 2): `marketplace.json` description matches `plugin.json`; a test keeps them in sync. Done.
+- 007: both descriptions read "Brainstorm, then the Cycle loop: grill, plan, split, build, review, QA, retro." Done.
 
 ## See it work
 
@@ -36,6 +37,14 @@ tail -1 src/kit/plugin/skills/retro/SKILL.md
 - `src/kit/plugin/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`: one-word change each.
 
 ## Findings
+
+### Round 3
+
+Human signed off.
+
+Seen at QA, for the retro (not this PRD):
+- After reinstalling `kit` as editable, the Build agent committed 007 itself as Andrew Forbes; no staged-but-uncommitted step this time.
+- The sandbox and the host share the worktree's `.venv`. After `kit run`, `.venv/bin/python` pointed at the container's `/usr/local/bin/python3`, so the next host `uv run` deleted and rebuilt it. Harmless but slow, and the same thing would happen in reverse.
 
 ### Round 2
 
