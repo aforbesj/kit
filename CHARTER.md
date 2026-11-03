@@ -24,7 +24,7 @@ The Kit Owner, and anyone who forks the Kit as their standard.
 ## Areas
 
 - **kit** (owner: Kit Owner): the skills, CLI, setup.sh, standards, template and sandbox. Next, in order:
-  1. Brainstorm a problem into a chosen answer before the Charter grill, or at Pick when the next Feature isn't obvious. Record the rejected options in the Charter.
+  1. Brainstorm what to build before a Charter grill: when starting a Product, or when an Area has no next Features.
   2. Leave a Build running and trust how it stopped.
   3. Start a Product that builds first time.
   4. Sign off QA from recorded results.
