@@ -51,3 +51,7 @@ Noted, no Issue: this is QA round 3 against an appetite of 2.
 013: dirty_files keeps the whole path. It now runs `git status --porcelain -z` directly (not via `git()`, which strips the leading space of ` M path`) and skips the old-path entry of renames/copies.
 Test written first (seen failing): `test_dirty_files_keeps_first_character_of_modified_tracked_file`. The run-level Stop reason uses the same function, so it has no separate test.
 All 13 Issues are done; next pass should print COMPLETE.
+Review (round 4): pyright 0 errors; ruff check clean; ruff format clean (50 files); pytest 99 passed, 1 skipped in 1.61s. No Sample data (PRD: none), so no validation run. No Docker here, so the 011 host-venv test is still skipped and unverified.
+Passed: 013 (`dirty_files` returns `['tracked.txt']` for an unstaged edit; checked by hand in a scratch repo with a staged rename, an unstaged edit, a name with a space and a non-ASCII untracked name: got `['new.txt', 't.txt', 'we ird.txt', 'ñ.txt']`, all whole). A throwaway run-level probe whose agent only edits the tracked CHARTER.md ended with `Stop reason: dirty tree: pass 1 (implement) left 1 uncommitted: CHARTER.md`. Every earlier Done when line still holds; the diff stays within the PRD's scope.
+Noted, no Issue: 013's Acceptance also asked for a `kit run`-level test on a tracked-file edit. None was added. The behavior is correct (probe above), and the unit test covers the one function that path uses, so a gap in tests alone doesn't justify a fifth QA round over an appetite of 2.
+No Issues written.
