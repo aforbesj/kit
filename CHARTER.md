@@ -24,9 +24,10 @@ The Kit Owner, and anyone who forks the Kit as their standard.
 ## Areas
 
 - **kit** (owner: Kit Owner): the skills, CLI, setup.sh, standards, template and sandbox. Next, in order:
-  1. Leave a Build running and trust how it stopped.
-  2. Start a Product that builds first time.
-  3. Sign off QA from recorded results.
-  4. Research or Prototype when the grill asks.
+  1. Brainstorm a problem into a chosen answer before the Charter grill, or at Pick when the next Feature isn't obvious. Record the rejected options in the Charter.
+  2. Leave a Build running and trust how it stopped.
+  3. Start a Product that builds first time.
+  4. Sign off QA from recorded results.
+  5. Research or Prototype when the grill asks.
 
 Stay tiny: every line must change what an agent does.
