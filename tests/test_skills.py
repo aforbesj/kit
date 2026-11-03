@@ -144,8 +144,10 @@ def test_to_prd_template_has_appetite_line() -> None:
 def test_retro_measures_cycle_against_appetite() -> None:
     text = _skill("retro")
     assert "Appetite" in text
-    for word in ("`pick:`", "`close:`", "`qa:`", "Issue", DEFAULT_APPETITE):
+    for word in ("`pick:`", "`qa:`", "Issue", DEFAULT_APPETITE):
         assert word in text
+    assert "`pick:` commit to now" in text
+    assert "`close:`" not in text
 
 
 def test_to_issues_stops_before_committing_when_split_passes_appetite() -> None:
