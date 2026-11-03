@@ -96,3 +96,16 @@ def test_marketplace_description_matches_plugin_manifest() -> None:
     market = json.loads((ROOT / ".claude-plugin/marketplace.json").read_text())
     entry = next(p for p in market["plugins"] if p["name"] == "kit")
     assert entry["description"] == manifest["description"]
+
+
+def test_adr_numbers_are_unique() -> None:
+    adrs = Path(__file__).parent.parent / "docs/adr"
+    numbers = [p.name.split("-", 1)[0] for p in adrs.glob("*.md")]
+    assert len(numbers) == len(set(numbers))
+
+
+def test_cycle_ends_at_merge_is_adr_7() -> None:
+    adrs = Path(__file__).parent.parent / "docs/adr"
+    assert not (adrs / "0001-cycle-ends-at-merge.md").exists()
+    text = (adrs / "0007-cycle-ends-at-merge.md").read_text()
+    assert text.startswith("# 7. ")

@@ -1,4 +1,4 @@
-# 1. A Cycle ends when its Cycle Branch merges
+# 7. A Cycle ends when its Cycle Branch merges
 
 ## Decision
 

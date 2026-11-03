@@ -1,0 +1,3 @@
+Issue 005: ADR numbers are unique
+Renamed 0001-cycle-ends-at-merge.md to 0007 (heading # 7.), added uniqueness and rename tests in tests/test_skills.py.
+No other file referenced the old path; next ADR is 0008.
