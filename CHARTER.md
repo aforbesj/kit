@@ -23,11 +23,12 @@ The Kit Owner, and anyone who forks the Kit as their standard.
 
 ## Areas
 
-- **kit** (owner: Kit Owner): the skills, CLI, setup.sh, standards, template and sandbox. Next, in order:
-  1. Bet on the next Feature: ideas that came up are kept as unsorted candidates, never groomed, and each retro bets on the next Feature from them or from something new.
-  2. Leave a Build running and trust how it stopped: no staged-but-uncommitted work, `kit doctor` warns when the installed `kit` is older than the Product's, the sandbox and the host don't rebuild each other's `.venv`, and a Cycle that changes the Kit builds and QAs with its own skills and CLI.
-  3. Start a Product that builds first time, named once a Brainstorm has settled what it is.
-  4. Sign off QA from recorded results: an agent launches what was built (CLI, plugin, app), follows `qa.md` and reports before the human judges.
-  5. Research or Prototype when the grill asks.
+- **kit** (owner: Kit Owner): the skills, CLI, setup.sh, standards, template and sandbox.
+  - Top 3:
+    1. Leave a Build running and trust how it stopped: no staged-but-uncommitted work, `kit doctor` warns when the installed `kit` is older than the Product's, the sandbox and the host don't rebuild each other's `.venv`, and a Cycle that changes the Kit builds and QAs with its own skills and CLI. (raised 4×, last 2026-11-03)
+    2. Sign off QA from recorded results: an agent launches what was built (CLI, plugin, app), follows `qa.md` and reports before the human judges. (raised 3×, last 2026-11-03)
+    3. Start a Product that builds first time, named once a Brainstorm has settled what it is. (raised 2×, last 2026-11-03)
+  - Bottom 3:
+    4. Research or Prototype when the grill asks. (raised 1×, last 2026-11-02)
 
 Stay tiny: every line must change what an agent does.
