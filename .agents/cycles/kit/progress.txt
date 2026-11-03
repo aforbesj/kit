@@ -6,3 +6,7 @@ Retro table row for CHARTER.md also reworded to 'only a Charter grill or the ret
 Next: Issue 003 (docs: Phases line in both CLAUDE.md files, README) is the only one left.
 003: Phases line in both CLAUDE.md files now names Brainstorm and Charter grill; README names /kit:brainstorm in Start a Product and Close; tests added to tests/test_skills.py.
 All three Issues are done; the Cycle is ready for QA and Close.
+Review: 003 was staged but uncommitted; committed it as "003: Docs name the Brainstorm" before reviewing main...HEAD.
+Review: Sample data none, so no Validation. pyright 0 errors, ruff check and ruff format clean, pytest 39 passed in 0.91s.
+Review: all 9 Done when lines and every Acceptance box in 001-003 met; diff stays inside the PRD's What changes. No Issues written.
+Review notes for the retro (not failures): CHARTER.md "In scope" skill list omits brainstorm; plugin.json description omits it; the retro skill says /kit:brainstorm before `kit close`, so a Charter grill could run on the Cycle branch during Close; say whether it belongs before or after the merge.
