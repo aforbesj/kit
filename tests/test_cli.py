@@ -325,3 +325,22 @@ def test_workspace_leaves_root_on_other_branch_alone(tmp_path: Path) -> None:
     assert git(root, "branch", "--show-current") == "side"
     assert git(root, "rev-parse", "main") == before
     assert git(ws, "rev-parse", "HEAD") == git(other, "rev-parse", "HEAD")
+
+
+def test_close_abandon_with_remote_keeps_tag_there_and_drops_branch(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    origin = with_origin(tmp_path, root)
+    cli.workspace(root, "core")
+    git(root, "push", "-q", "origin", "cycle/core")
+
+    assert cli.close(root, "core", abandon=True) == 0
+    assert git(origin, "tag", "--list", "abandoned/core-*")
+    assert git(origin, "branch", "--list", "cycle/core") == ""
+
+
+def test_close_abandon_without_remote_keeps_tag_locally(tmp_path: Path) -> None:
+    root = product(tmp_path)
+    cli.workspace(root, "core")
+
+    assert cli.close(root, "core", abandon=True) == 0
+    assert git(root, "tag", "--list", "abandoned/core-*")

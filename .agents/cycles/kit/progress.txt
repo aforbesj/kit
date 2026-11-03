@@ -10,3 +10,6 @@ Next: 003 and 005 are unblocked; 003 can fast-forward root main after the fetch 
 003: _latest_main fast-forwards the root's main to origin/main after a successful fetch when root is clean and on main.
 Added three tests in tests/test_cli.py (clean, dirty, other branch) with a push_ahead helper.
 Next: 005 and 007 are unblocked; 006 too (uv.lock drift still left uncommitted).
+005: close --abandon pushes the abandoned tag to origin and deletes cycle/<area> from origin when a remote exists.
+Added two tests in tests/test_cli.py (with remote, without); push failures are ignored so the local abandon always completes.
+Next: 006 and 007 are unblocked (uv.lock drift still left uncommitted).

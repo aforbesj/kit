@@ -294,6 +294,9 @@ def close(root: Path, area: str, abandon: bool) -> int:
     if abandon:
         tag = f"abandoned/{area}-{date.today().isoformat()}"
         git(root, "tag", tag, branch)
+        if git(root, "remote"):
+            subprocess.run(["git", "push", "-q", "origin", tag], check=False, cwd=root)
+            subprocess.run(["git", "push", "-q", "origin", "--delete", branch], check=False, cwd=root)
         _free(root, cwd, branch, delete_branch=True)
         print(f"Abandoned. Kept as tag {tag}; the lesson belongs in CHARTER.md.")
         return 0
