@@ -690,9 +690,11 @@ def close(root: Path, area: str, abandon: bool) -> int:
         if git(root, "remote"):
             subprocess.run(["git", "push", "-q", "origin", tag], check=False, cwd=root)
             subprocess.run(["git", "push", "-q", "origin", "--delete", branch], check=False, cwd=root)
-        _free(root, cwd, branch, delete_branch=True)
         print(f"Abandoned. Kept as tag {tag}; the lesson belongs in CHARTER.md.")
-        return 0
+        return 0 if _free(root, cwd, branch, delete_branch=True) else 1
+    if not cwd.exists():
+        print(f"No checkout at {cwd}. If `kit close {area}` already opened the PR, the Cycle is closed; nothing to do.")
+        return 1
     config = load_config(root)
     main = config.get("main", "main")
     if subprocess.run(["git", "rebase", main], check=False, cwd=cwd).returncode != 0:
@@ -718,19 +720,29 @@ def close(root: Path, area: str, abandon: bool) -> int:
     else:
         merge = f"No remote. After sign-off, merge: git merge --no-ff {branch}"
     print(f"Next:\n  1. {merge}\n  2. kit once {area}\n  3. /kit:grill")
-    _free(root, cwd, branch, delete_branch=False)
-    return 0
+    return 0 if _free(root, cwd, branch, delete_branch=False) else 1
 
 
-def _free(root: Path, cwd: Path, branch: str, delete_branch: bool) -> None:
+def _free(root: Path, cwd: Path, branch: str, delete_branch: bool) -> bool:
+    """Remove the Area's checkout, sandbox volume and, if asked, branch. False when the checkout would not go."""
     if cwd.exists():
-        git(root, "worktree", "remove", "--force", str(cwd))
+        done = subprocess.run(
+            ["git", "worktree", "remove", "--force", str(cwd)], check=False, cwd=root, capture_output=True, text=True
+        )
+        if done.returncode != 0:
+            print(
+                f"Could not remove {cwd}: {done.stderr.strip()}\n"
+                "Files the sandbox wrote as root block it. Clear them, then prune:\n"
+                f'  docker run --rm -v "{cwd.parent}:/w" alpine rm -rf /w/{cwd.name} && git worktree prune'
+            )
+            return False
     try:
         subprocess.run(["docker", "volume", "rm", venv_volume(root, cwd)], check=False, capture_output=True)
     except OSError:
         pass  # no Docker installed: nothing to remove
     if delete_branch:
         git(root, "branch", "-D", branch)
+    return True
 
 
 def main(argv: list[str] | None = None) -> int:

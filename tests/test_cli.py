@@ -1074,3 +1074,30 @@ def test_ctrl_c_stops_the_sandbox_agent(tmp_path: Path, monkeypatch: pytest.Monk
     assert on_kill is not None
     on_kill()
     assert killed == [name]
+
+
+def test_close_without_checkout_says_so(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product(tmp_path)
+
+    assert cli.close(root, "core", abandon=False) == 1
+    assert "No checkout" in capsys.readouterr().out
+
+
+def test_close_reports_checkout_it_cannot_remove(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = product(tmp_path)
+    cli.workspace(root, "core")
+    real = subprocess.run
+
+    def stuck(command: Any, *args: Any, **kwargs: Any) -> Any:
+        if command[:3] == ["git", "worktree", "remove"]:
+            return subprocess.CompletedProcess(command, 255, "", "Permission denied")
+        return real(command, *args, **kwargs)
+
+    monkeypatch.setattr(cli.subprocess, "run", stuck)
+
+    assert cli.close(root, "core", abandon=False) == 1
+    out = capsys.readouterr().out
+    assert "Next:" in out
+    assert "Could not remove" in out and "git worktree prune" in out
