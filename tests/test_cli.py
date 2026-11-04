@@ -855,3 +855,40 @@ def test_qa_steps_run_inside_the_sandbox_command(tmp_path: Path, monkeypatch: py
     cli.run_qa(cli.load_config(root), root, root, "core", local=False)
     assert [c[0] for c in seen] == ["docker"] * 2
     assert seen[0][-3:] == ["sh", "-c", "echo one"]
+
+
+PRD_WITH_HOST = """# PRD
+
+## QA steps
+
+1. `echo sandbox`: see it. Proves: first.
+
+### Host steps
+
+2. `echo "$HOME" > home.txt; env > env.txt; pwd > pwd.txt`: see exit 0. Proves: host.
+"""
+
+
+def test_host_steps_run_on_the_host_scrubbed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product_with_prd(tmp_path, PRD_WITH_HOST)
+    monkeypatch.setenv("MY_API_KEY", "x")
+    monkeypatch.setenv("GITHUB_FOO", "x")
+    monkeypatch.setenv("ANTHROPIC_BAR", "x")
+    seen: list[list[str]] = []
+    real = cli.stream
+
+    def spy(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> tuple[str, int]:
+        seen.append(command)
+        if command[0] == "docker":
+            return "ok\n", 0
+        return real(command, cwd, env)
+
+    monkeypatch.setattr(cli, "stream", spy)
+    monkeypatch.setattr(cli, "venv_volume", lambda root, cwd: "vol")
+    assert cli.run_qa(cli.load_config(root), root, root, "core", local=False) == 2
+    assert [c[0] for c in seen] == ["docker", "sh"]
+    env = (root / "env.txt").read_text()
+    assert "PATH=" in env and "MY_API_KEY" not in env and "GITHUB_FOO" not in env and "ANTHROPIC_BAR" not in env
+    home = Path((root / "home.txt").read_text().strip())
+    assert not home.exists() and home != Path.home()
+    assert (root / "pwd.txt").read_text().strip() == str(root)

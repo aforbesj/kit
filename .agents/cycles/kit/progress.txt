@@ -1,3 +1,7 @@
 Issue 1: Run QA steps in the sandbox.
 Changed: cli.py gained qa_steps/run_qa/docker_run (agent() reuses docker_run); run() runs QA after review clean, writes qa.md and qa-logs/; ignore lines added to .gitignore and IGNORE_LINES.
 Next: PRDs with no QA steps still end "Issues done, review clean" and a failing step ends with a placeholder "QA step failing" stop (Issue 4 replaces both); qa_steps ignores ### Host steps (Issue 2); no timeouts yet (Issue 3).
+
+Issue 2: Host steps run scrubbed.
+Changed: cli.py gained qa_host_steps, scrubbed_env and stream(env=); run_qa runs sandbox steps then ### Host steps on the host with a scrubbed env and a temp HOME; run() counts both.
+Next: steps still have no timeouts (Issue 3); stream() has no process-group handling yet; run_qa now takes (command, expect, host) triples internally.

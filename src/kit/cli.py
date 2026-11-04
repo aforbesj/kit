@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import tomllib
 from datetime import date, datetime, timedelta
@@ -346,9 +347,9 @@ def doctor(root: Path) -> int:
     return 1 if missing else 0
 
 
-def stream(command: list[str], cwd: Path) -> tuple[str, int]:
+def stream(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> tuple[str, int]:
     """Run a command, echo its output live, and return its output and exit code."""
-    process = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    process = subprocess.Popen(command, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     assert process.stdout is not None
     lines: list[str] = []
     for line in process.stdout:
@@ -435,16 +436,35 @@ def once(root: Path, area: str, issue: str | None) -> int:
 QA_STEP = re.compile(r"^\d+\.\s+`(.+?)`\s*:?\s*(.*)$")
 
 
-def qa_steps(prd: str) -> list[tuple[str, str]]:
-    """The PRD's `## QA steps` (before `### Host steps`) as (command, rest of the line) pairs."""
+def _qa_section(prd: str, heading: str) -> list[tuple[str, str]]:
     steps: list[tuple[str, str]] = []
     inside = False
     for line in prd.splitlines():
         if line.startswith("#"):
-            inside = line.strip() == "## QA steps"
+            inside = line.strip() == heading
         elif inside and (match := QA_STEP.match(line.strip())):
             steps.append((match.group(1), match.group(2)))
     return steps
+
+
+def qa_steps(prd: str) -> list[tuple[str, str]]:
+    """The PRD's `## QA steps` (before `### Host steps`) as (command, rest of the line) pairs."""
+    return _qa_section(prd, "## QA steps")
+
+
+def qa_host_steps(prd: str) -> list[tuple[str, str]]:
+    """The PRD's `### Host steps`, which must run on the host."""
+    return _qa_section(prd, "### Host steps")
+
+
+SECRET_NAME = re.compile(r"TOKEN|SECRET|KEY|PASSWORD|^(AWS_|GH_|GITHUB_|ANTHROPIC_)")
+
+
+def scrubbed_env(home: Path) -> dict[str, str]:
+    """The environment without credentials, with HOME pointing at a throwaway directory."""
+    env = {k: v for k, v in os.environ.items() if not SECRET_NAME.search(k.upper())}
+    env["HOME"] = str(home)
+    return env
 
 
 def prd_text(cwd: Path, area: str) -> str:
@@ -455,16 +475,21 @@ def prd_text(cwd: Path, area: str) -> str:
 def run_qa(config: Config, root: Path, cwd: Path, area: str, local: bool) -> int:
     """Run every QA step literally, record qa.md and qa-logs/NN.log, and return how many passed."""
     prd = cwd / ".agents" / "cycles" / area / "prd.md"
-    steps = qa_steps(prd.read_text()) if prd.exists() else []
+    text = prd.read_text() if prd.exists() else ""
+    steps = [(c, e, False) for c, e in qa_steps(text)] + [(c, e, True) for c, e in qa_host_steps(text)]
     folder = prd.parent
     logs = folder / "qa-logs"
     logs.mkdir(parents=True, exist_ok=True)
     entries = ["# QA results\n"]
     passed = 0
-    for number, (command, expect) in enumerate(steps, 1):
-        full = ["sh", "-c", command] if local else docker_run(config, root, cwd, ["sh", "-c", command])
+    for number, (command, expect, host) in enumerate(steps, 1):
         started = time.monotonic()
-        output, code = stream(full, cwd)
+        if host:
+            with tempfile.TemporaryDirectory() as home:
+                output, code = stream(["sh", "-c", command], cwd, scrubbed_env(Path(home)))
+        else:
+            full = ["sh", "-c", command] if local else docker_run(config, root, cwd, ["sh", "-c", command])
+            output, code = stream(full, cwd)
         seconds = time.monotonic() - started
         (logs / f"{number:02d}.log").write_text(output)
         passed += code == 0
@@ -517,7 +542,7 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
                 stop_dirty(area, files, f"pass {passes} (review) left")
                 return 1
             if CLEAN in output:
-                steps = len(qa_steps(prd_text(cwd, area)))
+                steps = len(qa_steps(prd_text(cwd, area))) + len(qa_host_steps(prd_text(cwd, area)))
                 if steps:
                     passed = run_qa(config, root, cwd, area, local)
                     if passed == steps:
