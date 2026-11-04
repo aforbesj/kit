@@ -273,3 +273,23 @@ def test_no_next_features_wording_left() -> None:
         ROOT / "src/kit/template/CLAUDE.md",
     ):
         assert "next Features" not in p.read_text(), p
+
+
+def test_qa_reads_recorded_results_and_does_not_write_them() -> None:
+    text = _skill("qa")
+    assert "recorded" in text and "qa.md`" in text
+    assert "Write `.agents/cycles/<area>/qa.md`" not in text
+    assert "See it work" not in text
+
+
+def test_qa_shows_then_runs_launch_and_names_the_hunt() -> None:
+    text = _skill("qa")
+    assert "`launch`" in text and "Hunt" in text
+    assert "host" in text
+    assert text.index("show") < text.index("run `launch`")
+
+
+def test_qa_asks_for_empty_launch_and_writes_it_before_the_commit() -> None:
+    text = _skill("qa")
+    assert "empty" in text and "`kit.json`" in text
+    assert text.index("`kit.json`") < text.index("git commit")

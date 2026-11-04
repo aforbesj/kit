@@ -17,3 +17,7 @@ Next: the old "Issues done, review clean" ending is gone; Issues 5-7 (launch key
 Issue 5: Launch key.
 Changed: kit.json (template and Kit) has "launch": ""; doctor() prints one "Warning: no `launch` command" line while it is empty or missing, exit code unchanged.
 Next: Issue 6 (qa skill) should write launch into kit.json when asked; the doctor warning text says /kit:qa will ask for it.
+
+Issue 6: QA skill launches for the Hunt.
+Changed: qa/SKILL.md now reads the recorded qa.md, shows then runs `launch` on the host, names the Hunt, asks for an empty `launch` and writes kit.json before the qa: commit; three tests in test_skills.py.
+Next: only Issue 7 (to-prd requires QA steps) is left.
