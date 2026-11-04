@@ -46,3 +46,9 @@ Issues written: 009 (Ctrl-C stops the streamed command).
 Issue 9: Ctrl-C stops the agent.
 Changed: stream() now kills the command's process group (and calls on_kill) on any exception while reading, then re-raises; timeout path unchanged; added test_ctrl_c_stops_the_streamed_command (failed first, now passes).
 Next: all 9 Issues done; the raised line about scoping the ignore lines is still open.
+
+Review (round 3).
+Passed: uv run pyright (0 errors), uv run ruff check, ruff format --check (47 files), uv run pytest -q (124 passed, 1 skipped). Issue 9 Acceptance met for local commands: test_ctrl_c_stops_the_streamed_command passes, and stream() kills the group and calls on_kill on any exception. All other Done when lines are still met. Nothing outside the PRD's scope changed. No Sample data (validation skipped by PRD).
+Measured: qa_round on this PRD with --local passed 4/5 (1: exit 0, 7.9s; 2: exit 0; 3: exit 0; 4: exit 0). Step 5 exit 1: `.venv/bin/python` is missing here and there is no Docker; it is a Host step. `git status --porcelain` was empty after qa.md and qa-logs/ were written.
+Found: the sandboxed implement and review agents run as unnamed containers and get no on_kill, so Ctrl-C SIGKILLs only the docker client and the container keeps editing the worktree. On main, SIGINT was proxied to it. Not measured, because there is no Docker in the review sandbox.
+Issues written: 010 (Ctrl-C stops the sandbox container).
