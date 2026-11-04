@@ -373,6 +373,7 @@ def stream(
     """Run a command, echo its output live, and return its output and exit code.
 
     Past `timeout` seconds the command's whole process group is killed and StepTimeout is raised.
+    If reading is interrupted (Ctrl-C), the group is killed too before the exception propagates.
     """
     process = subprocess.Popen(
         command, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True
@@ -381,7 +382,6 @@ def stream(
     timed_out = threading.Event()
 
     def kill() -> None:
-        timed_out.set()
         if on_kill:
             on_kill()
         try:
@@ -389,7 +389,11 @@ def stream(
         except ProcessLookupError:
             pass
 
-    timer = threading.Timer(timeout, kill) if timeout is not None else None
+    def time_out() -> None:
+        timed_out.set()
+        kill()
+
+    timer = threading.Timer(timeout, time_out) if timeout is not None else None
     if timer:
         timer.start()
     lines: list[str] = []
@@ -398,6 +402,9 @@ def stream(
             sys.stdout.write(line)
             lines.append(line)
         code = process.wait()
+    except BaseException:  # Ctrl-C and the like: the command has its own session, so stop it here
+        kill()
+        raise
     finally:
         if timer:
             timer.cancel()

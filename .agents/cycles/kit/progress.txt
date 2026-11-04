@@ -42,3 +42,7 @@ Passed: uv run pyright (0 errors), uv run ruff check, ruff format --check (46 fi
 Measured: qa_round on this PRD with --local: 4/5 passed (1: exit 0, 5.4s; 2: exit 0; 3: exit 0; 4: exit 0). Step 5 exit 1: `.venv/bin/python` not found here; it is a Host step and needs the host's Docker. `git status --porcelain` empty after writing qa.md and qa-logs/.
 Found: stream()'s new start_new_session=True also applies to the implement/review agents, so Ctrl-C leaves the agent running after `kit` prints `interrupted: Ctrl-C` (reproduced: child wrote its marker 2 s after kit exited; on main it dies).
 Issues written: 009 (Ctrl-C stops the streamed command).
+
+Issue 9: Ctrl-C stops the agent.
+Changed: stream() now kills the command's process group (and calls on_kill) on any exception while reading, then re-raises; timeout path unchanged; added test_ctrl_c_stops_the_streamed_command (failed first, now passes).
+Next: all 9 Issues done; the raised line about scoping the ignore lines is still open.

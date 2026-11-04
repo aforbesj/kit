@@ -1,7 +1,10 @@
 import json
+import os
 import re
+import signal
 import subprocess
 import sys
+import threading
 import time
 from datetime import timedelta
 from pathlib import Path
@@ -1031,3 +1034,19 @@ def test_kit_gitignore_covers_qa_files() -> None:
         result = subprocess.run(["git", "check-ignore", "-q", path], cwd=repo, check=False)
         assert result.returncode == 0, path
     assert {"qa.md", "qa-logs/"} <= set(cli.IGNORE_LINES)
+
+
+def test_ctrl_c_stops_the_streamed_command(tmp_path: Path) -> None:
+    marker = tmp_path / "alive"
+    killed: list[bool] = []
+    timer = threading.Timer(0.3, lambda: os.kill(os.getpid(), signal.SIGINT))
+    timer.start()
+    try:
+        with pytest.raises(KeyboardInterrupt):
+            cli.stream(["sh", "-c", f"sleep 2; touch {marker}"], tmp_path, on_kill=lambda: killed.append(True))
+    finally:
+        timer.cancel()
+    time.sleep(2.5)
+
+    assert not marker.exists()
+    assert killed == [True]
