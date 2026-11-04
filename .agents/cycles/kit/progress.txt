@@ -32,3 +32,7 @@ Measured: ran qa_round on this PRD locally in the sandbox: 4/5 steps passed (1: 
 Issues written: 008 (no test for "kit once runs no QA step"; no test that the Kit's own .gitignore ignores qa.md/qa-logs/).
 Standards nits, no Issue: run_qa is a one-line wrapper over qa_round, and qa_round reads the PRD itself instead of using prd_text.
 raised: scope the ignore lines to `.agents/cycles/*/qa.md` and `.agents/cycles/*/qa-logs/`; a bare `qa.md` hides any Product file named qa.md.
+
+Issue 8: Tests for once and Kit .gitignore.
+Changed: tests/test_cli.py gained test_once_runs_no_qa_step (failed when once called run_qa, then passed) and test_kit_gitignore_covers_qa_files; no src change.
+Next: all 8 Issues done; the raised line about scoping the ignore lines is still open.

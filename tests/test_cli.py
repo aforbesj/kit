@@ -995,3 +995,39 @@ def test_doctor_launch_warning(
     assert out.count("`launch`") == (0 if launch else 1)
     if not launch:
         assert "/kit:qa" in out
+
+
+PRD_WITH_MARKERS = """# PRD
+
+## QA steps
+
+1. `touch sandbox.marker`: see exit 0. Proves: sandbox.
+
+### Host steps
+
+2. `touch host.marker`: see exit 0. Proves: host.
+"""
+
+
+def test_once_runs_no_qa_step(tmp_path: Path) -> None:
+    root = product_with_prd(tmp_path, PRD_WITH_MARKERS)
+    fake = tmp_path / "noop_agent.py"
+    fake.write_text("")
+    config = json.loads((root / ".agents/kit.json").read_text())
+    config["agent"] = [sys.executable, str(fake)]
+    (root / ".agents/kit.json").write_text(json.dumps(config))
+    git(root, "commit", "-qam", "noop agent")
+
+    assert cli.once(root, "core", "001") == 0
+    cwd = root / ".worktrees/core"
+    assert not list(cwd.rglob("*.marker"))
+    folder = cwd / ".agents/cycles/core"
+    assert not (folder / "qa.md").exists() and not (folder / "qa-logs").exists()
+
+
+def test_kit_gitignore_covers_qa_files() -> None:
+    repo = Path(__file__).resolve().parent.parent
+    for path in (".agents/cycles/core/qa.md", ".agents/cycles/core/qa-logs/01.log"):
+        result = subprocess.run(["git", "check-ignore", "-q", path], cwd=repo, check=False)
+        assert result.returncode == 0, path
+    assert {"qa.md", "qa-logs/"} <= set(cli.IGNORE_LINES)
