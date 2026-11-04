@@ -10,4 +10,4 @@ A Cycle that changes the Kit has to build and QA with the Kit it is changing. Ot
 
 ## Cost
 
-The Kit takes a different path from every Product it serves, so a bug that only shows up on the installed path can get through a Kit Cycle.
+The Kit takes a different path from every Product it serves, so a bug that only shows up on the installed path can get through a Kit Cycle. The hand-off happens once, when `kit` starts, so a run that changes `run()` keeps the old code until the next run, and a session started outside `kit once`/`kit run` loads the installed plugin.
