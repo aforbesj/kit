@@ -801,3 +801,57 @@ def test_sandbox_user_is_never_root(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli.os, "getuid", lambda: 0)
     monkeypatch.setattr(cli.os, "getgid", lambda: 0)
     assert cli.sandbox_ids() == (1000, 1000)
+
+
+PRD_WITH_STEPS = """# PRD
+
+## QA steps
+
+1. `echo one`: see one. Proves: first.
+2. `seq 1 30`: see numbers. Proves: second.
+"""
+
+
+def product_with_prd(tmp_path: Path, prd: str) -> Path:
+    root = product(tmp_path, complete_after=1)
+    folder = root / ".agents/cycles/core"
+    folder.mkdir(parents=True)
+    (folder / "prd.md").write_text(prd)
+    git(root, "add", "-A")
+    git(root, "commit", "-m", "prd")
+    return root
+
+
+def test_qa_steps_parse_in_prd_order() -> None:
+    assert cli.qa_steps(PRD_WITH_STEPS) == [
+        ("echo one", "see one. Proves: first."),
+        ("seq 1 30", "see numbers. Proves: second."),
+    ]
+
+
+def test_run_executes_qa_steps_and_records_them(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product_with_prd(tmp_path, PRD_WITH_STEPS)
+
+    assert cli.run(root, "core", max_iterations=5, local=True) == 0
+    assert last_line(capsys) == "Stop reason: complete: QA steps 2/2 passed, run /kit:qa"
+    folder = root / ".worktrees/core/.agents/cycles/core"
+    report = (folder / "qa.md").read_text()
+    assert "`echo one`" in report and "see one." in report and "Exit code: 0" in report and "Duration:" in report
+    assert "30" in report and "\n10\n" not in report  # only the last 20 lines
+    assert (folder / "qa-logs/02.log").read_text().splitlines()[0] == "1"
+    assert git(root / ".worktrees/core", "status", "--porcelain") == ""
+
+
+def test_qa_steps_run_inside_the_sandbox_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product_with_prd(tmp_path, PRD_WITH_STEPS)
+    seen: list[list[str]] = []
+
+    def fake_stream(command: list[str], cwd: Path) -> tuple[str, int]:
+        seen.append(command)
+        return "ok\n", 0
+
+    monkeypatch.setattr(cli, "stream", fake_stream)
+    monkeypatch.setattr(cli, "venv_volume", lambda root, cwd: "vol")
+    cli.run_qa(cli.load_config(root), root, root, "core", local=False)
+    assert [c[0] for c in seen] == ["docker"] * 2
+    assert seen[0][-3:] == ["sh", "-c", "echo one"]

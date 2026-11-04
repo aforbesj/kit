@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import tomllib
 from datetime import date, datetime, timedelta
 from importlib import metadata
@@ -21,7 +22,7 @@ SKILLS = PACKAGE / "plugin" / "skills"
 STANDARDS = PACKAGE / "standards"
 SANDBOX = PACKAGE / "sandbox"
 TOKENS = ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
-IGNORE_LINES = ("data/", ".worktrees/", ".agents/handoff.md")
+IGNORE_LINES = ("data/", ".worktrees/", ".agents/handoff.md", "qa.md", "qa-logs/")
 COMPLETE = "<promise>COMPLETE</promise>"
 CLEAN = "<promise>CLEAN</promise>"
 
@@ -162,16 +163,22 @@ def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands
         return [*base, "--permission-mode", "acceptEdits", "--model", model, text]
     if local:
         return [*base, "-p", "--permission-mode", "acceptEdits", "--model", model, text]
-    repo = str(root.resolve())
     secrets = [arg for key in TOKENS if key in os.environ for arg in ("-e", key)]
+    tail = [*base, "-p", "--dangerously-skip-permissions", "--model", model, text]
+    return docker_run(config, root, cwd, tail, secrets)
+
+
+def docker_run(config: Config, root: Path, cwd: Path, tail: list[str], secrets: list[str] | None = None) -> list[str]:
+    """The sandbox `docker run` command: same image, mounts and working directory for the agent and QA steps."""
+    repo = str(root.resolve())
     return [
-        "docker", "run", "--rm", *secrets, *git_identity(root), "-e", f"TZ={posix_tz(datetime.now().astimezone().utcoffset())}",
+        "docker", "run", "--rm", *(secrets or []), *git_identity(root), "-e", f"TZ={posix_tz(datetime.now().astimezone().utcoffset())}",
         "-v", f"{repo}:{repo}",
         "-v", f"{repo}/data:{repo}/data:ro",
         "-v", f"{repo}/data/out:{repo}/data/out",
         "-v", f"{venv_volume(root, cwd)}:{VENV_PATH}", "-e", f"UV_PROJECT_ENVIRONMENT={VENV_PATH}",
         "-w", str(cwd.resolve()), image_name(config),
-        *base, "-p", "--dangerously-skip-permissions", "--model", model, text,
+        *tail,
     ]  # fmt: skip
 
 
@@ -425,6 +432,51 @@ def once(root: Path, area: str, issue: str | None) -> int:
     return code
 
 
+QA_STEP = re.compile(r"^\d+\.\s+`(.+?)`\s*:?\s*(.*)$")
+
+
+def qa_steps(prd: str) -> list[tuple[str, str]]:
+    """The PRD's `## QA steps` (before `### Host steps`) as (command, rest of the line) pairs."""
+    steps: list[tuple[str, str]] = []
+    inside = False
+    for line in prd.splitlines():
+        if line.startswith("#"):
+            inside = line.strip() == "## QA steps"
+        elif inside and (match := QA_STEP.match(line.strip())):
+            steps.append((match.group(1), match.group(2)))
+    return steps
+
+
+def prd_text(cwd: Path, area: str) -> str:
+    prd = cwd / ".agents" / "cycles" / area / "prd.md"
+    return prd.read_text() if prd.exists() else ""
+
+
+def run_qa(config: Config, root: Path, cwd: Path, area: str, local: bool) -> int:
+    """Run every QA step literally, record qa.md and qa-logs/NN.log, and return how many passed."""
+    prd = cwd / ".agents" / "cycles" / area / "prd.md"
+    steps = qa_steps(prd.read_text()) if prd.exists() else []
+    folder = prd.parent
+    logs = folder / "qa-logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    entries = ["# QA results\n"]
+    passed = 0
+    for number, (command, expect) in enumerate(steps, 1):
+        full = ["sh", "-c", command] if local else docker_run(config, root, cwd, ["sh", "-c", command])
+        started = time.monotonic()
+        output, code = stream(full, cwd)
+        seconds = time.monotonic() - started
+        (logs / f"{number:02d}.log").write_text(output)
+        passed += code == 0
+        tail = "\n".join(output.splitlines()[-20:])
+        entries.append(
+            f"## Step {number}: `{command}`\n\nYou should see: {expect}\n\n"
+            f"Exit code: {code}\nDuration: {seconds:.1f}s\nLog: {logs / f'{number:02d}.log'}\n\n```\n{tail}\n```\n"
+        )
+    (folder / "qa.md").write_text("\n".join(entries))
+    return passed
+
+
 def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
     """Hands-off Build: one Issue per pass until COMPLETE, then a fresh review."""
     config = load_config(root)
@@ -465,6 +517,14 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
                 stop_dirty(area, files, f"pass {passes} (review) left")
                 return 1
             if CLEAN in output:
+                steps = len(qa_steps(prd_text(cwd, area)))
+                if steps:
+                    passed = run_qa(config, root, cwd, area, local)
+                    if passed == steps:
+                        stop("complete", f"QA steps {passed}/{steps} passed, run /kit:qa")
+                        return 0
+                    stop("cap reached", "QA step failing")
+                    return 1
                 print(f"Build done. Next: `kit once {area}` and run /kit:qa.")
                 stop("complete", f"{_done(cwd, area)} Issues done, review clean")
                 return 0

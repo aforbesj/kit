@@ -1,0 +1,3 @@
+Issue 1: Run QA steps in the sandbox.
+Changed: cli.py gained qa_steps/run_qa/docker_run (agent() reuses docker_run); run() runs QA after review clean, writes qa.md and qa-logs/; ignore lines added to .gitignore and IGNORE_LINES.
+Next: PRDs with no QA steps still end "Issues done, review clean" and a failing step ends with a placeholder "QA step failing" stop (Issue 4 replaces both); qa_steps ignores ### Host steps (Issue 2); no timeouts yet (Issue 3).
