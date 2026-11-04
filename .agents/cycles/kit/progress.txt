@@ -21,3 +21,7 @@ Next: Issue 6 (qa skill) should write launch into kit.json when asked; the docto
 Issue 6: QA skill launches for the Hunt.
 Changed: qa/SKILL.md now reads the recorded qa.md, shows then runs `launch` on the host, names the Hunt, asks for an empty `launch` and writes kit.json before the qa: commit; three tests in test_skills.py.
 Next: only Issue 7 (to-prd requires QA steps) is left.
+
+Issue 7: to-prd requires QA steps.
+Changed: to-prd/SKILL.md template has ## QA steps and ### Host steps, requires one step before commit, rejects manual steps (Hunt); two tests in test_skills.py.
+Next: all 7 Issues done; Cycle is ready for review.
