@@ -66,3 +66,8 @@ raised: kit run re-runs QA with the worktree's new CLI: a Kit Cycle that changes
 Issue 11: QA hands interactive launch to the human.
 Changed: qa/SKILL.md step 2 hands an interactive `launch` to the human (new terminal, worktree root) and starts only background ones, with how to stop; two tests in test_skills.py. Also loosened test_template_and_kit_config_ship_empty_launch: the Kit's own kit.json now holds a real launch (set in QA round 1), so only the template must be empty.
 Next: all 11 Issues done; the raised lines about scoping the ignore lines and kit run using the worktree's new CLI are still open.
+
+Review (round 5).
+Passed: uv run pyright (0 errors), uv run ruff check, ruff format --check (49 files), uv run pytest -q (127 passed, 1 skipped). Issue 11 Acceptance met: qa/SKILL.md step 2 hands an interactive `launch` to the human (exact command, new terminal, worktree root) and starts only a background one, saying how to stop it; test_qa_hands_interactive_launch_to_the_human and test_qa_starts_only_background_launch_and_says_how_to_stop pin it. The loosened kit.json test still matches Done when (only the template must ship `"launch": ""`). All other Done when lines still met; nothing outside the PRD's scope changed. No Sample data (validation skipped by PRD).
+Measured: qa_round on this PRD with --local: 4/5 passed (1: exit 0, 7.8s, 127 passed; 2: exit 0, whoami = kit; 3: exit 0; 4: exit 0). Step 5 exit 1: `.venv/bin/python` not found here and no Docker; it is a Host step and needs the host. `git status --porcelain` empty after qa.md and qa-logs/ were written. Note: this overwrote the host-recorded qa.md; the next `kit run` records it again.
+Issues written: none.
