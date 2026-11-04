@@ -446,7 +446,7 @@ def test_stop_reason_complete(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     assert cli.run(root, "core", max_iterations=5, local=True) == 0
     line = last_line(capsys)
     assert line.startswith("Stop reason: complete: ")
-    assert "review clean" in line
+    assert line == "Stop reason: complete: no QA steps in PRD"
 
 
 def test_stop_reason_cap_reached(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -920,3 +920,52 @@ def test_timed_out_step_is_killed_with_children_and_fails(tmp_path: Path) -> Non
     state = Path(f"/proc/{pid}/stat")
     assert not state.exists() or state.read_text().split(") ")[1][0] == "Z"  # gone, or an unreaped zombie
     assert "Timed out after 1s" in (root / ".agents/cycles/core/qa.md").read_text()
+
+
+PRD_FAILING = """# PRD
+
+## QA steps
+
+1. `echo boom; exit 3`: see exit 0. Proves: it works.
+"""
+
+
+def spy_agents(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    prompts: list[str] = []
+    real = cli.agent
+
+    def spy(*args: Any, **kw: Any) -> list[str]:
+        prompts.append(args[4])
+        return real(*args, **kw)
+
+    monkeypatch.setattr(cli, "agent", spy)
+    return prompts
+
+
+def test_qa_failure_goes_into_next_implement_prompt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product_with_prd(tmp_path, PRD_FAILING)
+    prompts = spy_agents(monkeypatch)
+    head = git(root, "rev-parse", "HEAD")
+    issues = root / ".worktrees/core/.agents/cycles/core/issues"
+
+    cli.run(root, "core", max_iterations=4, local=True)
+
+    assert "QA step 1" not in prompts[0]
+    later = [p for p in prompts if "QA step 1: `echo boom; exit 3`" in p]
+    assert later and "boom" in later[0] and "priority: bug" in later[0]
+    assert not issues.exists() or not list(issues.glob("*bug*"))
+    assert git(root, "rev-parse", "HEAD") == head  # the CLI makes no commit on the main checkout
+
+
+def test_qa_cap_reached_names_failing_step(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product_with_prd(tmp_path, PRD_FAILING)
+
+    assert cli.run(root, "core", max_iterations=3, local=True) != 0
+    assert last_line(capsys) == "Stop reason: cap reached: QA step 1 still failing"
+
+
+def test_no_qa_steps_ends_complete(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product_with_prd(tmp_path, "# PRD\n")
+
+    assert cli.run(root, "core", max_iterations=5, local=True) == 0
+    assert last_line(capsys) == "Stop reason: complete: no QA steps in PRD"

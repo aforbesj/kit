@@ -9,3 +9,7 @@ Next: steps still have no timeouts (Issue 3); stream() has no process-group hand
 Issue 3: Step timeouts.
 Changed: cli.py gained step_timeout, StepTimeout, docker_kill; stream() runs in its own session and takes timeout=/on_kill= (kills the process group, raises StepTimeout); sandbox steps are named containers killed with docker kill; qa.md notes "Timed out after Ns".
 Next: a timed-out step is recorded with exit code 124 and counts as failed; Issue 4 can detect it by the "Timed out" line in qa.md or by run_qa's pass count.
+
+Issue 4: Failing step goes back to build.
+Changed: cli.py run_qa now wraps qa_round (returns failures); run() passes qa_failure_note into the next implement prompt, loops, and ends "cap reached: QA step N still failing" or "complete: no QA steps in PRD"; removed unused _done.
+Next: the old "Issues done, review clean" ending is gone; Issues 5-7 (launch key, qa skill, to-prd skill) are untouched.

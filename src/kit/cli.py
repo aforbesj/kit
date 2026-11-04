@@ -449,10 +449,6 @@ def _issues(cwd: Path, area: str) -> list[Path]:
     return sorted((cwd / ".agents" / "cycles" / area / "issues").glob("*.md"))
 
 
-def _done(cwd: Path, area: str) -> int:
-    return sum("status: done" in path.read_text() for path in _issues(cwd, area))
-
-
 def _last_issue(cwd: Path, area: str) -> str:
     issues = _issues(cwd, area)
     return max(issues, key=lambda path: path.stat().st_mtime).stem if issues else "none"
@@ -532,6 +528,13 @@ def prd_text(cwd: Path, area: str) -> str:
 
 def run_qa(config: Config, root: Path, cwd: Path, area: str, local: bool) -> int:
     """Run every QA step literally, record qa.md and qa-logs/NN.log, and return how many passed."""
+    return qa_round(config, root, cwd, area, local)[0]
+
+
+def qa_round(
+    config: Config, root: Path, cwd: Path, area: str, local: bool
+) -> tuple[int, list[tuple[int, str, str, int]]]:
+    """Like run_qa, plus the failures as (step number, command, output tail, exit code)."""
     prd = cwd / ".agents" / "cycles" / area / "prd.md"
     text = prd.read_text() if prd.exists() else ""
     steps = [(c, e, False) for c, e in qa_steps(text)] + [(c, e, True) for c, e in qa_host_steps(text)]
@@ -540,6 +543,7 @@ def run_qa(config: Config, root: Path, cwd: Path, area: str, local: bool) -> int
     logs.mkdir(parents=True, exist_ok=True)
     entries = ["# QA results\n"]
     passed = 0
+    failures: list[tuple[int, str, str, int]] = []
     for number, (command, expect, host) in enumerate(steps, 1):
         started = time.monotonic()
         limit = step_timeout(expect)
@@ -561,13 +565,23 @@ def run_qa(config: Config, root: Path, cwd: Path, area: str, local: bool) -> int
         (logs / f"{number:02d}.log").write_text(output)
         passed += code == 0
         tail = "\n".join(output.splitlines()[-20:])
+        if code != 0:
+            failures.append((number, command, tail, code))
         note = f"Timed out after {limit:g}s (killed)\n" if timed_out else ""
         entries.append(
             f"## Step {number}: `{command}`\n\nYou should see: {expect}\n\n"
             f"{note}Exit code: {code}\nDuration: {seconds:.1f}s\nLog: {logs / f'{number:02d}.log'}\n\n```\n{tail}\n```\n"
         )
     (folder / "qa.md").write_text("\n".join(entries))
-    return passed
+    return passed, failures
+
+
+def qa_failure_note(failures: list[tuple[int, str, str, int]]) -> str:
+    """Prompt text handing failing QA steps to the next implement pass."""
+    lines = ["QA steps failed after review was clean. Write a `priority: bug` Issue for each, fix it and commit:"]
+    for number, command, tail, code in failures:
+        lines.append(f"\nQA step {number}: `{command}` (exit {code})\n```\n{tail}\n```")
+    return "\n".join(lines)
 
 
 def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
@@ -585,9 +599,11 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
         (root / "data" / "out").mkdir(parents=True, exist_ok=True)
         models: dict[str, str] = config.get("models", {})
         passes = 0
+        failing: list[tuple[int, str, str, int]] = []
         for _ in range(max_iterations):
             passes += 1
-            build = prompt("implement", area, cwd)
+            build = prompt("implement", area, cwd, qa_failure_note(failing) if failing else "")
+            failing = []
             output, code = stream(
                 agent(config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local), cwd
             )
@@ -612,18 +628,20 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
             if CLEAN in output:
                 steps = len(qa_steps(prd_text(cwd, area))) + len(qa_host_steps(prd_text(cwd, area)))
                 if steps:
-                    passed = run_qa(config, root, cwd, area, local)
-                    if passed == steps:
+                    passed, failing = qa_round(config, root, cwd, area, local)
+                    if not failing:
                         stop("complete", f"QA steps {passed}/{steps} passed, run /kit:qa")
                         return 0
-                    stop("cap reached", "QA step failing")
-                    return 1
+                    continue
                 print(f"Build done. Next: `kit once {area}` and run /kit:qa.")
-                stop("complete", f"{_done(cwd, area)} Issues done, review clean")
+                stop("complete", "no QA steps in PRD")
                 return 0
     except KeyboardInterrupt:
         stop("interrupted", "Ctrl-C")
         return 130
+    if failing:
+        stop("cap reached", f"QA step {failing[0][0]} still failing")
+        return 1
     stop("cap reached", f"{max_iterations} passes, last Issue {_last_issue(cwd, area)}")
     return 1
 
