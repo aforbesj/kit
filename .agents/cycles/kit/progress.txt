@@ -13,3 +13,7 @@ Next: a timed-out step is recorded with exit code 124 and counts as failed; Issu
 Issue 4: Failing step goes back to build.
 Changed: cli.py run_qa now wraps qa_round (returns failures); run() passes qa_failure_note into the next implement prompt, loops, and ends "cap reached: QA step N still failing" or "complete: no QA steps in PRD"; removed unused _done.
 Next: the old "Issues done, review clean" ending is gone; Issues 5-7 (launch key, qa skill, to-prd skill) are untouched.
+
+Issue 5: Launch key.
+Changed: kit.json (template and Kit) has "launch": ""; doctor() prints one "Warning: no `launch` command" line while it is empty or missing, exit code unchanged.
+Next: Issue 6 (qa skill) should write launch into kit.json when asked; the doctor warning text says /kit:qa will ask for it.

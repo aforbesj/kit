@@ -969,3 +969,29 @@ def test_no_qa_steps_ends_complete(tmp_path: Path, capsys: pytest.CaptureFixture
 
     assert cli.run(root, "core", max_iterations=5, local=True) == 0
     assert last_line(capsys) == "Stop reason: complete: no QA steps in PRD"
+
+
+def test_template_and_kit_config_ship_empty_launch() -> None:
+    for path in (cli.TEMPLATE / ".agents/kit.json", Path(cli.__file__).parents[2] / ".agents/kit.json"):
+        assert json.loads(path.read_text())["launch"] == ""
+
+
+@pytest.mark.parametrize("launch", ["", None, "uv run app"])
+def test_doctor_launch_warning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], launch: str | None
+) -> None:
+    root = product(tmp_path)
+    config = json.loads((root / ".agents/kit.json").read_text())
+    config.pop("launch", None)
+    if launch is not None:
+        config["launch"] = launch
+    (root / ".agents/kit.json").write_text(json.dumps(config))
+    git(root, "config", "user.email", "ada@example.com")
+    monkeypatch.setattr(cli, "_ok", lambda _command: False)
+    monkeypatch.setattr(cli.shutil, "which", lambda name: f"/bin/{name}")
+
+    assert cli.doctor(root) == 0
+    out = capsys.readouterr().out
+    assert out.count("`launch`") == (0 if launch else 1)
+    if not launch:
+        assert "/kit:qa" in out

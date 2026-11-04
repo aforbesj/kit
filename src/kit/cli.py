@@ -343,6 +343,8 @@ def doctor(root: Path) -> int:
     kind = system()
     print(f"kit doctor ({kind})")
     warn_version(root)
+    if (root / ".agents" / "kit.json").exists() and not load_config(root).get("launch"):
+        print("Warning: no `launch` command in .agents/kit.json; /kit:qa will ask for it.")
     missing = False
     for name, ok, required, fix in checks(root, kind):
         mark = "ok  " if ok else ("FAIL" if required else "skip")
