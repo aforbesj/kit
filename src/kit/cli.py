@@ -259,19 +259,34 @@ def _ok(command: list[str]) -> bool:
         return False
 
 
+def sandbox_ids() -> tuple[int, int]:
+    """The UID and GID the sandbox user gets: the host's, so the bind-mounted repo stays readable and writable.
+
+    A root host maps to 1000, because Claude Code refuses to skip permission prompts as root.
+    """
+    uid, gid = os.getuid(), os.getgid()
+    return (uid, gid) if uid else (1000, 1000)
+
+
 def sandbox(image: str) -> None:
-    """Make sure Docker answers and the sandbox image exists, building it on first use."""
+    """Make sure Docker answers and the sandbox image fits this machine, building it on first use."""
     if not shutil.which("docker"):
         raise SystemExit("Docker is not installed. `kit doctor` shows the fix; `kit run --local` skips the sandbox.")
     if not _ok(["docker", "info"]):
         raise SystemExit("Docker is not running. Start it, or use `kit run --local` to skip the sandbox.")
+    uid, gid = sandbox_ids()
+    want = f"{uid}:{gid}"
     if not _ok(["docker", "image", "inspect", image]):
         print(f"Building the sandbox image {image} (first run only)...")
-    elif _ok(["docker", "run", "--rm", image, "test", "-d", VENV_PATH]):
-        return
     else:
-        print(f"Rebuilding the sandbox image {image} (it lacks {VENV_PATH})...")
-    subprocess.run(["docker", "build", "-t", image, str(SANDBOX)], check=True)
+        probe = f'test -d {VENV_PATH} && echo "$(id -u):$(id -g)"'
+        have = _output(["docker", "run", "--rm", image, "sh", "-c", probe])
+        if have == want:
+            return
+        built = f"user {have}" if have else f"no {VENV_PATH}"
+        print(f"Rebuilding the sandbox image {image} (it has {built}; this machine needs user {want})...")
+    build = ["docker", "build", "--build-arg", f"UID={uid}", "--build-arg", f"GID={gid}", "-t", image, str(SANDBOX)]
+    subprocess.run(build, check=True)
 
 
 def system() -> str:

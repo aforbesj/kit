@@ -760,19 +760,44 @@ def test_dirty_files_keeps_first_character_of_modified_tracked_file(tmp_path: Pa
     assert cli.dirty_files(tree) == ["tracked.txt"]
 
 
-def test_sandbox_rebuilds_an_image_without_the_venv_folder(monkeypatch: pytest.MonkeyPatch) -> None:
+def _fake_docker(monkeypatch: pytest.MonkeyPatch, probe_output: str) -> list[list[str]]:
+    """Docker answers and the image exists; the image's probe prints probe_output. Returns the commands run."""
     calls: list[list[str]] = []
-
-    def fake_ok(command: list[str]) -> bool:
-        calls.append(command)
-        return "test" not in command
-
     monkeypatch.setattr(cli.shutil, "which", lambda _: "/usr/bin/docker")
-    monkeypatch.setattr(cli, "_ok", fake_ok)
+    monkeypatch.setattr(cli, "_ok", lambda command: calls.append(command) or True)
+    monkeypatch.setattr(cli, "_output", lambda command, cwd=None: calls.append(command) or probe_output)
     monkeypatch.setattr(cli.subprocess, "run", lambda command, **_: calls.append(command))
+    monkeypatch.setattr(cli, "sandbox_ids", lambda: (1001, 127))
+    return calls
+
+
+def test_sandbox_rebuilds_an_image_without_the_venv_folder(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _fake_docker(monkeypatch, "")
     cli.sandbox("kit-sandbox")
     assert calls[-1][:2] == ["docker", "build"]
-    assert "USER kit\n" in (cli.SANDBOX / "Dockerfile").read_text()
-    assert (cli.SANDBOX / "Dockerfile").read_text().index("USER kit") < (cli.SANDBOX / "Dockerfile").read_text().index(
-        "mkdir /home/kit/venv"
-    )
+    dockerfile = (cli.SANDBOX / "Dockerfile").read_text()
+    assert "USER kit\n" in dockerfile
+    assert dockerfile.index("USER kit") < dockerfile.index("mkdir /home/kit/venv")
+
+
+def test_sandbox_rebuilds_an_image_built_for_another_uid(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    calls = _fake_docker(monkeypatch, "1000:1000")
+    cli.sandbox("kit-sandbox")
+    assert calls[-1] == [
+        "docker", "build", "--build-arg", "UID=1001", "--build-arg", "GID=127", "-t", "kit-sandbox", str(cli.SANDBOX),
+    ]  # fmt: skip
+    assert "it has user 1000:1000; this machine needs user 1001:127" in capsys.readouterr().out
+
+
+def test_sandbox_keeps_an_image_that_fits(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _fake_docker(monkeypatch, "1001:127")
+    cli.sandbox("kit-sandbox")
+    assert not any(command[:2] == ["docker", "build"] for command in calls)
+
+
+def test_sandbox_user_is_never_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli.os, "getuid", lambda: 0)
+    monkeypatch.setattr(cli.os, "getgid", lambda: 0)
+    assert cli.sandbox_ids() == (1000, 1000)
