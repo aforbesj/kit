@@ -52,6 +52,12 @@ _Avoid_: exit message, status
 **QA round**: One `/kit:qa` pass with the human, recorded as one `qa:` commit. Review rounds inside a Build don't count.
 _Avoid_: review round (that is the Build's own check)
 
+**QA steps**: The PRD's locked acceptance script: each step is a command, what you should see, and the Done when line it proves. Written at Plan, never changed mid-Cycle.
+_Avoid_: test plan, checklist, See it work
+
+**Hunt**: The human trying what the PRD didn't plan, on the launched Product during `/kit:qa`, to find bugs and Feature ideas.
+_Avoid_: exploration, play around, exploratory testing
+
 **Gate**: A check work must pass to move on.
 _Avoid_: guardrail, policy
 
