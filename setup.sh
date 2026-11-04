@@ -25,6 +25,7 @@ else
   OS=linux
 fi
 case "$(basename "${SHELL:-bash}")" in zsh) RC="$HOME/.zshrc" ;; *) RC="$HOME/.bashrc" ;; esac
+case ":$PATH:" in *":$HOME/.local/bin:"*) ON_PATH=1 ;; *) ON_PATH=0 ;; esac
 export PATH="$HOME/.local/bin:$PATH"
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
@@ -81,7 +82,11 @@ claude --version
 
 step "kit CLI (editable: git pull updates it)"
 uv tool install --force --editable "$KIT" >/dev/null
-uv tool update-shell >/dev/null 2>&1 || true
+# uv, claude and kit all install to ~/.local/bin; neither installer reliably puts it on PATH.
+if [ "$ON_PATH" = 0 ] && ! grep -qs '.local/bin' "$RC"; then
+  printf '\n# Kit: uv, claude and kit live here\nexport PATH="$HOME/.local/bin:$PATH"\n' >>"$RC"
+  echo "added ~/.local/bin to PATH in $RC"
+fi
 kit --help >/dev/null && echo "kit -> $(command -v kit)"
 
 step "Kit plugin for Claude Code"
