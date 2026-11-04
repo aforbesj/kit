@@ -56,6 +56,34 @@ def init(root: Path) -> list[Path]:
     return written
 
 
+def has_commits(root: Path) -> bool:
+    return (
+        subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", "HEAD"], check=False, cwd=root, capture_output=True
+        ).returncode
+        == 0
+    )
+
+
+def first_commit(root: Path) -> str:
+    """Commit the template when the repo has no history yet; return what happened as one line.
+
+    Only the template's paths and `.gitignore` are staged, so other files in the folder stay untracked.
+    A repo with history is left alone: the human commits the template where they choose.
+    """
+    if has_commits(root):
+        return "Repo has history, so nothing was committed. Commit the template on main before `kit once`."
+    template = [s.relative_to(TEMPLATE) for s in TEMPLATE.rglob("*") if s.is_file()]
+    paths = [str(p) for p in sorted({*template, Path(".gitignore")}) if (root / p).exists()]
+    try:
+        git(root, "add", "--", *paths)
+        git(root, "commit", "-q", "-m", "kit init")
+    except subprocess.CalledProcessError as error:
+        reason = (error.stderr or "").strip().splitlines()
+        return f"Could not commit the template ({reason[-1] if reason else 'git failed'}). Commit it yourself."
+    return "Committed the template as `kit init`."
+
+
 def _add_ignore_lines(path: Path) -> None:
     text = path.read_text() if path.exists() else ""
     missing = [line for line in IGNORE_LINES if line not in text.splitlines()]
@@ -103,6 +131,16 @@ def workspace(root: Path, area: str) -> Path:
     if not path.exists():
         branch = f"cycle/{area}"
         base = _latest_main(root)
+        if subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}"],
+            check=False,
+            cwd=root,
+            capture_output=True,
+        ).returncode:
+            raise SystemExit(
+                f"`{base}` has no commits, so there is nothing to start the Cycle from. "
+                'Fix: git add -A && git commit -m "Initial commit"'
+            )
         known = subprocess.run(
             ["git", "rev-parse", "--verify", "--quiet", branch], check=False, cwd=root, capture_output=True
         )
@@ -750,6 +788,7 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     start = commands.add_parser("init", help="add the Product template; never overwrites")
     start.add_argument("path", nargs="?", default=".", help="folder for the Product, created if missing")
+    start.add_argument("--no-commit", action="store_true", help="leave the template uncommitted")
     hands_on = commands.add_parser("once", help="hands-on session in an Area's checkout")
     hands_on.add_argument("area")
     hands_on.add_argument("issue", nargs="?")
@@ -767,8 +806,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "init":
         root = Path(args.path).resolve()
         root.mkdir(parents=True, exist_ok=True)
-        for path in init(root):
+        written = init(root)
+        for path in written:
             print(f"wrote {path.relative_to(root)}")
+        if not args.no_commit:
+            print(first_commit(root))
         here = "" if root == Path.cwd() else f"cd {args.path} && "
         print(f"Next: {here}claude, then run /kit:grill for the Charter.")
         return 0

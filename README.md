@@ -30,6 +30,8 @@ kit init my-product      # creates the folder and adds the template; never overw
 cd my-product && claude  # then: /kit:grill  (the Charter grill)
 ```
 
+In a new repo, `kit init` commits only the template, as `kit init`, so Cycles have a `main` to branch from. Other files already in the folder stay untracked. `--no-commit` skips the commit. To use an existing repo, clone it and run `kit init` inside the clone. Because the repo already has history, kit commits nothing; commit the template on `main` yourself.
+
 Nothing to build yet? Run `/kit:brainstorm` first (optional); it ends by pointing you to `/kit:grill`.
 
 ## Run a Cycle

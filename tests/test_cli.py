@@ -74,6 +74,44 @@ def test_init_writes_template_and_never_overwrites(tmp_path: Path) -> None:
     assert cli.init(tmp_path) == []
 
 
+def test_workspace_without_commits_says_how_to_fix(tmp_path: Path) -> None:
+    cli.init(tmp_path)
+    with pytest.raises(SystemExit, match="no commits.*git commit"):
+        cli.workspace(tmp_path, "area")
+    assert not (tmp_path / ".worktrees/area").exists()
+
+
+def test_init_commits_template_only_in_a_new_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "notes.txt").write_text("mine")
+
+    assert cli.main(["init"]) == 0
+
+    assert git(tmp_path, "log", "--format=%s") == "kit init"
+    tracked = git(tmp_path, "ls-files").splitlines()
+    assert ".agents/kit.json" in tracked and ".gitignore" in tracked
+    assert "notes.txt" not in tracked
+    cli.workspace(tmp_path, "area")
+    assert (tmp_path / ".worktrees/area/.agents/kit.json").exists()
+
+
+def test_init_no_commit_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(["init", "--no-commit"]) == 0
+    assert not cli.has_commits(tmp_path)
+
+
+def test_init_leaves_a_repo_with_history_uncommitted(tmp_path: Path) -> None:
+    git(tmp_path, "init", "-q", "-b", "main")
+    (tmp_path / "README.md").write_text("existing")
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-q", "-m", "existing")
+    cli.init(tmp_path)
+
+    assert "nothing was committed" in cli.first_commit(tmp_path)
+    assert git(tmp_path, "log", "--format=%s") == "existing"
+
+
 def test_init_adds_ignore_lines_once(tmp_path: Path) -> None:
     (tmp_path / ".gitignore").write_text("node_modules/")
     cli.init(tmp_path)
