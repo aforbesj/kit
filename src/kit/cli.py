@@ -162,7 +162,17 @@ def standards(config: Config, cwd: Path) -> str:
     return "\n\n".join(texts)
 
 
-def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands_off: bool, local: bool) -> list[str]:
+def agent(
+    config: Config,
+    root: Path,
+    cwd: Path,
+    model: str,
+    text: str,
+    *,
+    hands_off: bool,
+    local: bool,
+    name: str | None = None,
+) -> list[str]:
     base: list[str] = [*config.get("agent", ["claude"]), *plugin_args(root, cwd)]
     if not hands_off:
         return [*base, "--permission-mode", "acceptEdits", "--model", model, text]
@@ -170,14 +180,19 @@ def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands
         return [*base, "-p", "--permission-mode", "acceptEdits", "--model", model, text]
     secrets = [arg for key in TOKENS if key in os.environ for arg in ("-e", key)]
     tail = [*base, "-p", "--dangerously-skip-permissions", "--model", model, text]
-    return docker_run(config, root, cwd, tail, secrets)
+    return docker_run(config, root, cwd, tail, secrets, name)
 
 
-def docker_run(config: Config, root: Path, cwd: Path, tail: list[str], secrets: list[str] | None = None) -> list[str]:
-    """The sandbox `docker run` command: same image, mounts and working directory for the agent and QA steps."""
+def docker_run(
+    config: Config, root: Path, cwd: Path, tail: list[str], secrets: list[str] | None = None, name: str | None = None
+) -> list[str]:
+    """The sandbox `docker run` command: same image, mounts and working directory for the agent and QA steps.
+
+    A `name` lets the caller `docker kill` the container; killing the `docker run` client alone would leave it running.
+    """
     repo = str(root.resolve())
     return [
-        "docker", "run", "--rm", *(secrets or []), *git_identity(root), "-e", f"TZ={posix_tz(datetime.now().astimezone().utcoffset())}",
+        "docker", "run", "--rm", *(["--name", name] if name else []), *(secrets or []), *git_identity(root), "-e", f"TZ={posix_tz(datetime.now().astimezone().utcoffset())}",
         "-v", f"{repo}:{repo}",
         "-v", f"{repo}/data:{repo}/data:ro",
         "-v", f"{repo}/data/out:{repo}/data/out",
@@ -565,8 +580,7 @@ def qa_round(
                 output, code = stream(["sh", "-c", command], cwd, timeout=limit)
             else:
                 name = f"kit-qa-{os.getpid()}-{number}"
-                full = docker_run(config, root, cwd, ["sh", "-c", command])
-                full[3:3] = ["--name", name]  # so a timeout can kill the container, not just the client
+                full = docker_run(config, root, cwd, ["sh", "-c", command], name=name)
                 output, code = stream(full, cwd, timeout=limit, on_kill=functools.partial(docker_kill, name))
         except StepTimeout as late:
             output, code, timed_out = late.output, 124, True
@@ -613,8 +627,13 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
             passes += 1
             build = prompt("implement", area, cwd, qa_failure_note(failing) if failing else "")
             failing = []
+            name = f"kit-implement-{os.getpid()}-{passes}"
             output, code = stream(
-                agent(config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local), cwd
+                agent(
+                    config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local, name=name
+                ),
+                cwd,
+                on_kill=None if local else functools.partial(docker_kill, name),
             )
             if code != 0:
                 stop("agent failed", f"implement exited {code}: {_last_line(output)}")
@@ -625,8 +644,11 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
             if COMPLETE not in output:
                 continue
             check = prompt("review", area, cwd, standards(config, cwd))
+            name = f"kit-review-{os.getpid()}-{passes}"
             output, code = stream(
-                agent(config, root, cwd, models.get("review", "opus"), check, hands_off=True, local=local), cwd
+                agent(config, root, cwd, models.get("review", "opus"), check, hands_off=True, local=local, name=name),
+                cwd,
+                on_kill=None if local else functools.partial(docker_kill, name),
             )
             if code != 0:
                 stop("agent failed", f"review exited {code}: {_last_line(output)}")

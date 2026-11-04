@@ -6,6 +6,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -480,7 +481,7 @@ def test_stop_reason_interrupted(
 ) -> None:
     root = product(tmp_path)
 
-    def interrupt(command: list[str], cwd: Path) -> tuple[str, int]:
+    def interrupt(command: list[str], cwd: Path, **_: Any) -> tuple[str, int]:
         raise KeyboardInterrupt
 
     monkeypatch.setattr(cli, "stream", interrupt)
@@ -1050,3 +1051,26 @@ def test_ctrl_c_stops_the_streamed_command(tmp_path: Path) -> None:
 
     assert not marker.exists()
     assert killed == [True]
+
+
+def test_ctrl_c_stops_the_sandbox_agent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product_with_prd(tmp_path, PRD_WITH_STEPS)
+    seen: list[tuple[list[str], Callable[[], None] | None]] = []
+    killed: list[str] = []
+
+    def fake_stream(command: list[str], cwd: Path, **kwargs: Any) -> tuple[str, int]:
+        seen.append((command, kwargs.get("on_kill")))
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "sandbox", lambda image: None)
+    monkeypatch.setattr(cli, "venv_volume", lambda root, cwd: "vol")
+    monkeypatch.setattr(cli, "stream", fake_stream)
+    monkeypatch.setattr(cli, "docker_kill", killed.append)
+
+    assert cli.run(root, "core", max_iterations=1, local=False) == 130
+    command, on_kill = seen[0]
+    assert command[0] == "docker" and "--name" in command
+    name = command[command.index("--name") + 1]
+    assert on_kill is not None
+    on_kill()
+    assert killed == [name]
