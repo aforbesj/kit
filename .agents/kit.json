@@ -13,6 +13,6 @@
   },
   "maxIterations": 20,
   "handoffTokens": 80000,
-  "launch": "",
+  "launch": "claude --plugin-dir src/kit/plugin",
   "sandbox": { "image": "kit-sandbox" }
 }
