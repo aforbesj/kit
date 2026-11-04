@@ -738,6 +738,7 @@ def test_sandbox_leaves_host_venv_alone(tmp_path: Path) -> None:
     config: cli.Config = {"sandbox": {"image": "kit-sandbox"}}
     before = (root / ".venv" / "bin" / "python").resolve()
     volume = cli.venv_volume(root, root)
+    cli.sandbox(cli.image_name(config))  # builds the image on a fresh machine, as `kit run` does (CI has none)
     try:
         command = cli.agent(config, root, root, "sonnet", "go", hands_off=True, local=False)
         sync = [*command[: command.index(cli.image_name(config)) + 1], "uv", "sync"]
