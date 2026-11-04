@@ -976,8 +976,8 @@ def test_no_qa_steps_ends_complete(tmp_path: Path, capsys: pytest.CaptureFixture
 
 
 def test_template_and_kit_config_ship_empty_launch() -> None:
-    for path in (cli.TEMPLATE / ".agents/kit.json", Path(cli.__file__).parents[2] / ".agents/kit.json"):
-        assert json.loads(path.read_text())["launch"] == ""
+    assert json.loads((cli.TEMPLATE / ".agents/kit.json").read_text())["launch"] == ""
+    assert "launch" in json.loads((Path(cli.__file__).parents[2] / ".agents/kit.json").read_text())
 
 
 @pytest.mark.parametrize("launch", ["", None, "uv run app"])

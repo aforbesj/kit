@@ -308,3 +308,15 @@ def test_to_prd_needs_a_qa_step_and_rejects_manual_ones() -> None:
     assert re.search(r"won't commit.*without at least one QA step", text, re.DOTALL)
     assert re.search(r"reject.*manual action", text, re.DOTALL | re.IGNORECASE)
     assert "Hunt" in text
+
+
+def test_qa_hands_interactive_launch_to_the_human() -> None:
+    text = _skill("qa")
+    assert "interactive" in text and "new terminal" in text
+    assert "worktree root" in text
+
+
+def test_qa_starts_only_background_launch_and_says_how_to_stop() -> None:
+    text = _skill("qa")
+    assert "background" in text and "server" in text
+    assert "stop" in text.split("background", 1)[1]
