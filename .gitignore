@@ -8,3 +8,5 @@ data/
 .worktrees/
 .agents/handoff.md
 .python-version
+qa.md
+qa-logs/

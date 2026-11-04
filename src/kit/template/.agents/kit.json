@@ -13,5 +13,6 @@
   },
   "maxIterations": 20,
   "handoffTokens": 80000,
+  "launch": "",
   "sandbox": { "image": "kit-sandbox" }
 }

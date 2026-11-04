@@ -25,12 +25,12 @@ The Kit Owner, and anyone who forks the Kit as their standard.
 
 - **kit** (owner: Kit Owner): the skills, CLI, setup.sh, standards, template and sandbox.
   - Top 3:
-    1. Sign off QA from recorded results: an agent launches what was built (CLI, plugin, app), on a host with Docker, follows `qa.md` and reports before the human judges. (raised 4×, last 2026-11-03)
-    2. Start a Product that builds first time, named once a Brainstorm has settled what it is. (raised 2×, last 2026-11-03)
-    3. Every `kit run` ends with a Stop reason, including `not started` when Docker or the sandbox fails. (raised 1×, last 2026-11-03)
+    1. Start a Product that builds first time, named once a Brainstorm has settled what it is. (raised 2×, last 2026-11-03)
+    2. A Kit Cycle runs end to end on its own working copy: `kit run` uses the new CLI after it changes, and grill and qa sessions load the worktree's plugin. (raised 1×, last 2026-11-03)
+    3. Review measures QA steps without overwriting the real `qa.md`. (raised 1×, last 2026-11-03)
   - Bottom 3:
-    4. `kit status <area>` prints the last Stop reason and the dirty files without starting an agent. (raised 1×, last 2026-11-03)
-    5. Fact lookups (grill, Research) run on the cheapest model that is enough, set in `kit.json` models. (raised 1×, last 2026-11-03)
-    6. Research or Prototype when the grill asks. (raised 1×, last 2026-11-02)
+    4. Every `kit run` ends with a Stop reason, including `not started` when Docker or the sandbox fails. (raised 1×, last 2026-11-03)
+    5. Ignore lines scoped to `.agents/cycles/*/qa.md` and `qa-logs/`, so a Product's own `qa.md` isn't hidden. (raised 1×, last 2026-11-03)
+    6. `kit status <area>` prints the last Stop reason and the dirty files without starting an agent. (raised 1×, last 2026-11-03)
 
 Stay tiny: every line must change what an agent does.

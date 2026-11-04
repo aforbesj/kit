@@ -273,3 +273,50 @@ def test_no_next_features_wording_left() -> None:
         ROOT / "src/kit/template/CLAUDE.md",
     ):
         assert "next Features" not in p.read_text(), p
+
+
+def test_qa_reads_recorded_results_and_does_not_write_them() -> None:
+    text = _skill("qa")
+    assert "recorded" in text and "qa.md`" in text
+    assert "Write `.agents/cycles/<area>/qa.md`" not in text
+    assert "See it work" not in text
+
+
+def test_qa_shows_then_runs_launch_and_names_the_hunt() -> None:
+    text = _skill("qa")
+    assert "`launch`" in text and "Hunt" in text
+    assert "host" in text
+    assert text.index("show") < text.index("run `launch`")
+
+
+def test_qa_asks_for_empty_launch_and_writes_it_before_the_commit() -> None:
+    text = _skill("qa")
+    assert "empty" in text and "`kit.json`" in text
+    assert text.index("`kit.json`") < text.index("git commit")
+
+
+def test_to_prd_template_has_qa_steps_and_host_steps() -> None:
+    text = _skill("to-prd")
+    assert "## QA steps" in text
+    assert "### Host steps" in text
+    for word in ("see:", "proves:", "timeout:"):
+        assert word in text
+
+
+def test_to_prd_needs_a_qa_step_and_rejects_manual_ones() -> None:
+    text = _skill("to-prd")
+    assert re.search(r"won't commit.*without at least one QA step", text, re.DOTALL)
+    assert re.search(r"reject.*manual action", text, re.DOTALL | re.IGNORECASE)
+    assert "Hunt" in text
+
+
+def test_qa_hands_interactive_launch_to_the_human() -> None:
+    text = _skill("qa")
+    assert "interactive" in text and "new terminal" in text
+    assert "worktree root" in text
+
+
+def test_qa_starts_only_background_launch_and_says_how_to_stop() -> None:
+    text = _skill("qa")
+    assert "background" in text and "server" in text
+    assert "stop" in text.split("background", 1)[1]

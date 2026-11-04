@@ -1,7 +1,12 @@
 import json
+import os
 import re
+import signal
 import subprocess
 import sys
+import threading
+import time
+from collections.abc import Callable
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -445,7 +450,7 @@ def test_stop_reason_complete(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     assert cli.run(root, "core", max_iterations=5, local=True) == 0
     line = last_line(capsys)
     assert line.startswith("Stop reason: complete: ")
-    assert "review clean" in line
+    assert line == "Stop reason: complete: no QA steps in PRD"
 
 
 def test_stop_reason_cap_reached(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -476,7 +481,7 @@ def test_stop_reason_interrupted(
 ) -> None:
     root = product(tmp_path)
 
-    def interrupt(command: list[str], cwd: Path) -> tuple[str, int]:
+    def interrupt(command: list[str], cwd: Path, **_: Any) -> tuple[str, int]:
         raise KeyboardInterrupt
 
     monkeypatch.setattr(cli, "stream", interrupt)
@@ -801,3 +806,271 @@ def test_sandbox_user_is_never_root(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli.os, "getuid", lambda: 0)
     monkeypatch.setattr(cli.os, "getgid", lambda: 0)
     assert cli.sandbox_ids() == (1000, 1000)
+
+
+PRD_WITH_STEPS = """# PRD
+
+## QA steps
+
+1. `echo one`: see one. Proves: first.
+2. `seq 1 30`: see numbers. Proves: second.
+"""
+
+
+def product_with_prd(tmp_path: Path, prd: str) -> Path:
+    root = product(tmp_path, complete_after=1)
+    folder = root / ".agents/cycles/core"
+    folder.mkdir(parents=True)
+    (folder / "prd.md").write_text(prd)
+    git(root, "add", "-A")
+    git(root, "commit", "-m", "prd")
+    return root
+
+
+def test_qa_steps_parse_in_prd_order() -> None:
+    assert cli.qa_steps(PRD_WITH_STEPS) == [
+        ("echo one", "see one. Proves: first."),
+        ("seq 1 30", "see numbers. Proves: second."),
+    ]
+
+
+def test_run_executes_qa_steps_and_records_them(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product_with_prd(tmp_path, PRD_WITH_STEPS)
+
+    assert cli.run(root, "core", max_iterations=5, local=True) == 0
+    assert last_line(capsys) == "Stop reason: complete: QA steps 2/2 passed, run /kit:qa"
+    folder = root / ".worktrees/core/.agents/cycles/core"
+    report = (folder / "qa.md").read_text()
+    assert "`echo one`" in report and "see one." in report and "Exit code: 0" in report and "Duration:" in report
+    assert "30" in report and "\n10\n" not in report  # only the last 20 lines
+    assert (folder / "qa-logs/02.log").read_text().splitlines()[0] == "1"
+    assert git(root / ".worktrees/core", "status", "--porcelain") == ""
+
+
+def test_qa_steps_run_inside_the_sandbox_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product_with_prd(tmp_path, PRD_WITH_STEPS)
+    seen: list[list[str]] = []
+
+    def fake_stream(command: list[str], cwd: Path, **_: Any) -> tuple[str, int]:
+        seen.append(command)
+        return "ok\n", 0
+
+    monkeypatch.setattr(cli, "stream", fake_stream)
+    monkeypatch.setattr(cli, "venv_volume", lambda root, cwd: "vol")
+    cli.run_qa(cli.load_config(root), root, root, "core", local=False)
+    assert [c[0] for c in seen] == ["docker"] * 2
+    assert seen[0][-3:] == ["sh", "-c", "echo one"]
+
+
+PRD_WITH_HOST = """# PRD
+
+## QA steps
+
+1. `echo sandbox`: see it. Proves: first.
+
+### Host steps
+
+2. `echo "$HOME" > home.txt; env > env.txt; pwd > pwd.txt`: see exit 0. Proves: host.
+"""
+
+
+def test_host_steps_run_on_the_host_scrubbed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product_with_prd(tmp_path, PRD_WITH_HOST)
+    monkeypatch.setenv("MY_API_KEY", "x")
+    monkeypatch.setenv("GITHUB_FOO", "x")
+    monkeypatch.setenv("ANTHROPIC_BAR", "x")
+    seen: list[list[str]] = []
+    real = cli.stream
+
+    def spy(command: list[str], cwd: Path, env: dict[str, str] | None = None, **kw: Any) -> tuple[str, int]:
+        seen.append(command)
+        if command[0] == "docker":
+            return "ok\n", 0
+        return real(command, cwd, env, **kw)
+
+    monkeypatch.setattr(cli, "stream", spy)
+    monkeypatch.setattr(cli, "venv_volume", lambda root, cwd: "vol")
+    assert cli.run_qa(cli.load_config(root), root, root, "core", local=False) == 2
+    assert [c[0] for c in seen] == ["docker", "sh"]
+    env = (root / "env.txt").read_text()
+    assert "PATH=" in env and "MY_API_KEY" not in env and "GITHUB_FOO" not in env and "ANTHROPIC_BAR" not in env
+    home = Path((root / "home.txt").read_text().strip())
+    assert not home.exists() and home != Path.home()
+    assert (root / "pwd.txt").read_text().strip() == str(root)
+
+
+def test_step_timeout_parses_default_seconds_and_minutes() -> None:
+    assert cli.step_timeout("see it. Proves: x.") == 300
+    assert cli.step_timeout("see it. timeout: 1s. Proves: x.") == 1
+    assert cli.step_timeout("see it. Timeout: 10m Proves: x.") == 600
+
+
+PRD_TIMEOUT = """# PRD
+
+## QA steps
+
+1. `sleep 30 & echo $! > child.pid; wait`: see nothing. timeout: 1s. Proves: killed.
+"""
+
+
+def test_timed_out_step_is_killed_with_children_and_fails(tmp_path: Path) -> None:
+    root = product_with_prd(tmp_path, PRD_TIMEOUT)
+    started = time.monotonic()
+
+    assert cli.run_qa(cli.load_config(root), root, root, "core", local=True) == 0
+    assert time.monotonic() - started < 10
+    pid = int((root / "child.pid").read_text())
+    time.sleep(0.2)
+    state = Path(f"/proc/{pid}/stat")
+    assert not state.exists() or state.read_text().split(") ")[1][0] == "Z"  # gone, or an unreaped zombie
+    assert "Timed out after 1s" in (root / ".agents/cycles/core/qa.md").read_text()
+
+
+PRD_FAILING = """# PRD
+
+## QA steps
+
+1. `echo boom; exit 3`: see exit 0. Proves: it works.
+"""
+
+
+def spy_agents(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    prompts: list[str] = []
+    real = cli.agent
+
+    def spy(*args: Any, **kw: Any) -> list[str]:
+        prompts.append(args[4])
+        return real(*args, **kw)
+
+    monkeypatch.setattr(cli, "agent", spy)
+    return prompts
+
+
+def test_qa_failure_goes_into_next_implement_prompt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product_with_prd(tmp_path, PRD_FAILING)
+    prompts = spy_agents(monkeypatch)
+    head = git(root, "rev-parse", "HEAD")
+    issues = root / ".worktrees/core/.agents/cycles/core/issues"
+
+    cli.run(root, "core", max_iterations=4, local=True)
+
+    assert "QA step 1" not in prompts[0]
+    later = [p for p in prompts if "QA step 1: `echo boom; exit 3`" in p]
+    assert later and "boom" in later[0] and "priority: bug" in later[0]
+    assert not issues.exists() or not list(issues.glob("*bug*"))
+    assert git(root, "rev-parse", "HEAD") == head  # the CLI makes no commit on the main checkout
+
+
+def test_qa_cap_reached_names_failing_step(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product_with_prd(tmp_path, PRD_FAILING)
+
+    assert cli.run(root, "core", max_iterations=3, local=True) != 0
+    assert last_line(capsys) == "Stop reason: cap reached: QA step 1 still failing"
+
+
+def test_no_qa_steps_ends_complete(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = product_with_prd(tmp_path, "# PRD\n")
+
+    assert cli.run(root, "core", max_iterations=5, local=True) == 0
+    assert last_line(capsys) == "Stop reason: complete: no QA steps in PRD"
+
+
+def test_template_and_kit_config_ship_empty_launch() -> None:
+    assert json.loads((cli.TEMPLATE / ".agents/kit.json").read_text())["launch"] == ""
+    assert "launch" in json.loads((Path(cli.__file__).parents[2] / ".agents/kit.json").read_text())
+
+
+@pytest.mark.parametrize("launch", ["", None, "uv run app"])
+def test_doctor_launch_warning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], launch: str | None
+) -> None:
+    root = product(tmp_path)
+    config = json.loads((root / ".agents/kit.json").read_text())
+    config.pop("launch", None)
+    if launch is not None:
+        config["launch"] = launch
+    (root / ".agents/kit.json").write_text(json.dumps(config))
+    git(root, "config", "user.email", "ada@example.com")
+    monkeypatch.setattr(cli, "_ok", lambda _command: False)
+    monkeypatch.setattr(cli.shutil, "which", lambda name: f"/bin/{name}")
+
+    assert cli.doctor(root) == 0
+    out = capsys.readouterr().out
+    assert out.count("`launch`") == (0 if launch else 1)
+    if not launch:
+        assert "/kit:qa" in out
+
+
+PRD_WITH_MARKERS = """# PRD
+
+## QA steps
+
+1. `touch sandbox.marker`: see exit 0. Proves: sandbox.
+
+### Host steps
+
+2. `touch host.marker`: see exit 0. Proves: host.
+"""
+
+
+def test_once_runs_no_qa_step(tmp_path: Path) -> None:
+    root = product_with_prd(tmp_path, PRD_WITH_MARKERS)
+    fake = tmp_path / "noop_agent.py"
+    fake.write_text("")
+    config = json.loads((root / ".agents/kit.json").read_text())
+    config["agent"] = [sys.executable, str(fake)]
+    (root / ".agents/kit.json").write_text(json.dumps(config))
+    git(root, "commit", "-qam", "noop agent")
+
+    assert cli.once(root, "core", "001") == 0
+    cwd = root / ".worktrees/core"
+    assert not list(cwd.rglob("*.marker"))
+    folder = cwd / ".agents/cycles/core"
+    assert not (folder / "qa.md").exists() and not (folder / "qa-logs").exists()
+
+
+def test_kit_gitignore_covers_qa_files() -> None:
+    repo = Path(__file__).resolve().parent.parent
+    for path in (".agents/cycles/core/qa.md", ".agents/cycles/core/qa-logs/01.log"):
+        result = subprocess.run(["git", "check-ignore", "-q", path], cwd=repo, check=False)
+        assert result.returncode == 0, path
+    assert {"qa.md", "qa-logs/"} <= set(cli.IGNORE_LINES)
+
+
+def test_ctrl_c_stops_the_streamed_command(tmp_path: Path) -> None:
+    marker = tmp_path / "alive"
+    killed: list[bool] = []
+    timer = threading.Timer(0.3, lambda: os.kill(os.getpid(), signal.SIGINT))
+    timer.start()
+    try:
+        with pytest.raises(KeyboardInterrupt):
+            cli.stream(["sh", "-c", f"sleep 2; touch {marker}"], tmp_path, on_kill=lambda: killed.append(True))
+    finally:
+        timer.cancel()
+    time.sleep(2.5)
+
+    assert not marker.exists()
+    assert killed == [True]
+
+
+def test_ctrl_c_stops_the_sandbox_agent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = product_with_prd(tmp_path, PRD_WITH_STEPS)
+    seen: list[tuple[list[str], Callable[[], None] | None]] = []
+    killed: list[str] = []
+
+    def fake_stream(command: list[str], cwd: Path, **kwargs: Any) -> tuple[str, int]:
+        seen.append((command, kwargs.get("on_kill")))
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "sandbox", lambda image: None)
+    monkeypatch.setattr(cli, "venv_volume", lambda root, cwd: "vol")
+    monkeypatch.setattr(cli, "stream", fake_stream)
+    monkeypatch.setattr(cli, "docker_kill", killed.append)
+
+    assert cli.run(root, "core", max_iterations=1, local=False) == 130
+    command, on_kill = seen[0]
+    assert command[0] == "docker" and "--name" in command
+    name = command[command.index("--name") + 1]
+    assert on_kill is not None
+    on_kill()
+    assert killed == [name]

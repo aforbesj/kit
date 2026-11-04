@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
+import tempfile
+import threading
+import time
 import tomllib
+from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from importlib import metadata
 from pathlib import Path
@@ -21,7 +27,7 @@ SKILLS = PACKAGE / "plugin" / "skills"
 STANDARDS = PACKAGE / "standards"
 SANDBOX = PACKAGE / "sandbox"
 TOKENS = ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
-IGNORE_LINES = ("data/", ".worktrees/", ".agents/handoff.md")
+IGNORE_LINES = ("data/", ".worktrees/", ".agents/handoff.md", "qa.md", "qa-logs/")
 COMPLETE = "<promise>COMPLETE</promise>"
 CLEAN = "<promise>CLEAN</promise>"
 
@@ -156,22 +162,43 @@ def standards(config: Config, cwd: Path) -> str:
     return "\n\n".join(texts)
 
 
-def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands_off: bool, local: bool) -> list[str]:
+def agent(
+    config: Config,
+    root: Path,
+    cwd: Path,
+    model: str,
+    text: str,
+    *,
+    hands_off: bool,
+    local: bool,
+    name: str | None = None,
+) -> list[str]:
     base: list[str] = [*config.get("agent", ["claude"]), *plugin_args(root, cwd)]
     if not hands_off:
         return [*base, "--permission-mode", "acceptEdits", "--model", model, text]
     if local:
         return [*base, "-p", "--permission-mode", "acceptEdits", "--model", model, text]
-    repo = str(root.resolve())
     secrets = [arg for key in TOKENS if key in os.environ for arg in ("-e", key)]
+    tail = [*base, "-p", "--dangerously-skip-permissions", "--model", model, text]
+    return docker_run(config, root, cwd, tail, secrets, name)
+
+
+def docker_run(
+    config: Config, root: Path, cwd: Path, tail: list[str], secrets: list[str] | None = None, name: str | None = None
+) -> list[str]:
+    """The sandbox `docker run` command: same image, mounts and working directory for the agent and QA steps.
+
+    A `name` lets the caller `docker kill` the container; killing the `docker run` client alone would leave it running.
+    """
+    repo = str(root.resolve())
     return [
-        "docker", "run", "--rm", *secrets, *git_identity(root), "-e", f"TZ={posix_tz(datetime.now().astimezone().utcoffset())}",
+        "docker", "run", "--rm", *(["--name", name] if name else []), *(secrets or []), *git_identity(root), "-e", f"TZ={posix_tz(datetime.now().astimezone().utcoffset())}",
         "-v", f"{repo}:{repo}",
         "-v", f"{repo}/data:{repo}/data:ro",
         "-v", f"{repo}/data/out:{repo}/data/out",
         "-v", f"{venv_volume(root, cwd)}:{VENV_PATH}", "-e", f"UV_PROJECT_ENVIRONMENT={VENV_PATH}",
         "-w", str(cwd.resolve()), image_name(config),
-        *base, "-p", "--dangerously-skip-permissions", "--model", model, text,
+        *tail,
     ]  # fmt: skip
 
 
@@ -331,6 +358,8 @@ def doctor(root: Path) -> int:
     kind = system()
     print(f"kit doctor ({kind})")
     warn_version(root)
+    if (root / ".agents" / "kit.json").exists() and not load_config(root).get("launch"):
+        print("Warning: no `launch` command in .agents/kit.json; /kit:qa will ask for it.")
     missing = False
     for name, ok, required, fix in checks(root, kind):
         mark = "ok  " if ok else ("FAIL" if required else "skip")
@@ -339,15 +368,64 @@ def doctor(root: Path) -> int:
     return 1 if missing else 0
 
 
-def stream(command: list[str], cwd: Path) -> tuple[str, int]:
-    """Run a command, echo its output live, and return its output and exit code."""
-    process = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+def docker_kill(name: str) -> None:
+    """Kill a named sandbox container; killing the `docker run` client alone would leave it running."""
+    subprocess.run(["docker", "kill", name], check=False, capture_output=True)
+
+
+class StepTimeout(Exception):
+    """A command ran past its timeout and was killed with its whole process group."""
+
+    def __init__(self, output: str, seconds: float) -> None:
+        super().__init__(f"timed out after {seconds:g}s")
+        self.output = output
+        self.seconds = seconds
+
+
+def stream(
+    command: list[str], cwd: Path, env: dict[str, str] | None = None, timeout: float | None = None, on_kill: Callable[[], None] | None = None
+) -> tuple[str, int]:  # fmt: skip
+    """Run a command, echo its output live, and return its output and exit code.
+
+    Past `timeout` seconds the command's whole process group is killed and StepTimeout is raised.
+    If reading is interrupted (Ctrl-C), the group is killed too before the exception propagates.
+    """
+    process = subprocess.Popen(
+        command, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True
+    )  # fmt: skip
     assert process.stdout is not None
+    timed_out = threading.Event()
+
+    def kill() -> None:
+        if on_kill:
+            on_kill()
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+    def time_out() -> None:
+        timed_out.set()
+        kill()
+
+    timer = threading.Timer(timeout, time_out) if timeout is not None else None
+    if timer:
+        timer.start()
     lines: list[str] = []
-    for line in process.stdout:
-        sys.stdout.write(line)
-        lines.append(line)
-    return "".join(lines), process.wait()
+    try:
+        for line in process.stdout:
+            sys.stdout.write(line)
+            lines.append(line)
+        code = process.wait()
+    except BaseException:  # Ctrl-C and the like: the command has its own session, so stop it here
+        kill()
+        raise
+    finally:
+        if timer:
+            timer.cancel()
+    if timed_out.is_set():
+        raise StepTimeout("".join(lines), timeout or 0)
+    return "".join(lines), code
 
 
 def stop(category: str, detail: str) -> None:
@@ -395,10 +473,6 @@ def _issues(cwd: Path, area: str) -> list[Path]:
     return sorted((cwd / ".agents" / "cycles" / area / "issues").glob("*.md"))
 
 
-def _done(cwd: Path, area: str) -> int:
-    return sum("status: done" in path.read_text() for path in _issues(cwd, area))
-
-
 def _last_issue(cwd: Path, area: str) -> str:
     issues = _issues(cwd, area)
     return max(issues, key=lambda path: path.stat().st_mtime).stem if issues else "none"
@@ -425,6 +499,114 @@ def once(root: Path, area: str, issue: str | None) -> int:
     return code
 
 
+QA_STEP = re.compile(r"^\d+\.\s+`(.+?)`\s*:?\s*(.*)$")
+
+
+def _qa_section(prd: str, heading: str) -> list[tuple[str, str]]:
+    steps: list[tuple[str, str]] = []
+    inside = False
+    for line in prd.splitlines():
+        if line.startswith("#"):
+            inside = line.strip() == heading
+        elif inside and (match := QA_STEP.match(line.strip())):
+            steps.append((match.group(1), match.group(2)))
+    return steps
+
+
+def qa_steps(prd: str) -> list[tuple[str, str]]:
+    """The PRD's `## QA steps` (before `### Host steps`) as (command, rest of the line) pairs."""
+    return _qa_section(prd, "## QA steps")
+
+
+def qa_host_steps(prd: str) -> list[tuple[str, str]]:
+    """The PRD's `### Host steps`, which must run on the host."""
+    return _qa_section(prd, "### Host steps")
+
+
+SECRET_NAME = re.compile(r"TOKEN|SECRET|KEY|PASSWORD|^(AWS_|GH_|GITHUB_|ANTHROPIC_)")
+
+
+def scrubbed_env(home: Path) -> dict[str, str]:
+    """The environment without credentials, with HOME pointing at a throwaway directory."""
+    env = {k: v for k, v in os.environ.items() if not SECRET_NAME.search(k.upper())}
+    env["HOME"] = str(home)
+    return env
+
+
+DEFAULT_TIMEOUT = 300.0
+TIMEOUT = re.compile(r"timeout:\s*(\d+)\s*([sm])\b", re.IGNORECASE)
+
+
+def step_timeout(rest: str) -> float:
+    """Seconds a step may run: its `timeout: 10m` / `timeout: 1s`, else 300."""
+    match = TIMEOUT.search(rest)
+    if not match:
+        return DEFAULT_TIMEOUT
+    return float(int(match.group(1)) * (60 if match.group(2).lower() == "m" else 1))
+
+
+def prd_text(cwd: Path, area: str) -> str:
+    prd = cwd / ".agents" / "cycles" / area / "prd.md"
+    return prd.read_text() if prd.exists() else ""
+
+
+def run_qa(config: Config, root: Path, cwd: Path, area: str, local: bool) -> int:
+    """Run every QA step literally, record qa.md and qa-logs/NN.log, and return how many passed."""
+    return qa_round(config, root, cwd, area, local)[0]
+
+
+def qa_round(
+    config: Config, root: Path, cwd: Path, area: str, local: bool
+) -> tuple[int, list[tuple[int, str, str, int]]]:
+    """Like run_qa, plus the failures as (step number, command, output tail, exit code)."""
+    prd = cwd / ".agents" / "cycles" / area / "prd.md"
+    text = prd.read_text() if prd.exists() else ""
+    steps = [(c, e, False) for c, e in qa_steps(text)] + [(c, e, True) for c, e in qa_host_steps(text)]
+    folder = prd.parent
+    logs = folder / "qa-logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    entries = ["# QA results\n"]
+    passed = 0
+    failures: list[tuple[int, str, str, int]] = []
+    for number, (command, expect, host) in enumerate(steps, 1):
+        started = time.monotonic()
+        limit = step_timeout(expect)
+        timed_out = False
+        try:
+            if host:
+                with tempfile.TemporaryDirectory() as home:
+                    output, code = stream(["sh", "-c", command], cwd, scrubbed_env(Path(home)), timeout=limit)
+            elif local:
+                output, code = stream(["sh", "-c", command], cwd, timeout=limit)
+            else:
+                name = f"kit-qa-{os.getpid()}-{number}"
+                full = docker_run(config, root, cwd, ["sh", "-c", command], name=name)
+                output, code = stream(full, cwd, timeout=limit, on_kill=functools.partial(docker_kill, name))
+        except StepTimeout as late:
+            output, code, timed_out = late.output, 124, True
+        seconds = time.monotonic() - started
+        (logs / f"{number:02d}.log").write_text(output)
+        passed += code == 0
+        tail = "\n".join(output.splitlines()[-20:])
+        if code != 0:
+            failures.append((number, command, tail, code))
+        note = f"Timed out after {limit:g}s (killed)\n" if timed_out else ""
+        entries.append(
+            f"## Step {number}: `{command}`\n\nYou should see: {expect}\n\n"
+            f"{note}Exit code: {code}\nDuration: {seconds:.1f}s\nLog: {logs / f'{number:02d}.log'}\n\n```\n{tail}\n```\n"
+        )
+    (folder / "qa.md").write_text("\n".join(entries))
+    return passed, failures
+
+
+def qa_failure_note(failures: list[tuple[int, str, str, int]]) -> str:
+    """Prompt text handing failing QA steps to the next implement pass."""
+    lines = ["QA steps failed after review was clean. Write a `priority: bug` Issue for each, fix it and commit:"]
+    for number, command, tail, code in failures:
+        lines.append(f"\nQA step {number}: `{command}` (exit {code})\n```\n{tail}\n```")
+    return "\n".join(lines)
+
+
 def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
     """Hands-off Build: one Issue per pass until COMPLETE, then a fresh review."""
     config = load_config(root)
@@ -440,11 +622,18 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
         (root / "data" / "out").mkdir(parents=True, exist_ok=True)
         models: dict[str, str] = config.get("models", {})
         passes = 0
+        failing: list[tuple[int, str, str, int]] = []
         for _ in range(max_iterations):
             passes += 1
-            build = prompt("implement", area, cwd)
+            build = prompt("implement", area, cwd, qa_failure_note(failing) if failing else "")
+            failing = []
+            name = f"kit-implement-{os.getpid()}-{passes}"
             output, code = stream(
-                agent(config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local), cwd
+                agent(
+                    config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local, name=name
+                ),
+                cwd,
+                on_kill=None if local else functools.partial(docker_kill, name),
             )
             if code != 0:
                 stop("agent failed", f"implement exited {code}: {_last_line(output)}")
@@ -455,8 +644,11 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
             if COMPLETE not in output:
                 continue
             check = prompt("review", area, cwd, standards(config, cwd))
+            name = f"kit-review-{os.getpid()}-{passes}"
             output, code = stream(
-                agent(config, root, cwd, models.get("review", "opus"), check, hands_off=True, local=local), cwd
+                agent(config, root, cwd, models.get("review", "opus"), check, hands_off=True, local=local, name=name),
+                cwd,
+                on_kill=None if local else functools.partial(docker_kill, name),
             )
             if code != 0:
                 stop("agent failed", f"review exited {code}: {_last_line(output)}")
@@ -465,12 +657,22 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
                 stop_dirty(area, files, f"pass {passes} (review) left")
                 return 1
             if CLEAN in output:
+                steps = len(qa_steps(prd_text(cwd, area))) + len(qa_host_steps(prd_text(cwd, area)))
+                if steps:
+                    passed, failing = qa_round(config, root, cwd, area, local)
+                    if not failing:
+                        stop("complete", f"QA steps {passed}/{steps} passed, run /kit:qa")
+                        return 0
+                    continue
                 print(f"Build done. Next: `kit once {area}` and run /kit:qa.")
-                stop("complete", f"{_done(cwd, area)} Issues done, review clean")
+                stop("complete", "no QA steps in PRD")
                 return 0
     except KeyboardInterrupt:
         stop("interrupted", "Ctrl-C")
         return 130
+    if failing:
+        stop("cap reached", f"QA step {failing[0][0]} still failing")
+        return 1
     stop("cap reached", f"{max_iterations} passes, last Issue {_last_issue(cwd, area)}")
     return 1
 
