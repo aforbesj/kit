@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import tomllib
+from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from importlib import metadata
 from pathlib import Path
@@ -347,15 +351,57 @@ def doctor(root: Path) -> int:
     return 1 if missing else 0
 
 
-def stream(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> tuple[str, int]:
-    """Run a command, echo its output live, and return its output and exit code."""
-    process = subprocess.Popen(command, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+def docker_kill(name: str) -> None:
+    """Kill a named sandbox container; killing the `docker run` client alone would leave it running."""
+    subprocess.run(["docker", "kill", name], check=False, capture_output=True)
+
+
+class StepTimeout(Exception):
+    """A command ran past its timeout and was killed with its whole process group."""
+
+    def __init__(self, output: str, seconds: float) -> None:
+        super().__init__(f"timed out after {seconds:g}s")
+        self.output = output
+        self.seconds = seconds
+
+
+def stream(
+    command: list[str], cwd: Path, env: dict[str, str] | None = None, timeout: float | None = None, on_kill: Callable[[], None] | None = None
+) -> tuple[str, int]:  # fmt: skip
+    """Run a command, echo its output live, and return its output and exit code.
+
+    Past `timeout` seconds the command's whole process group is killed and StepTimeout is raised.
+    """
+    process = subprocess.Popen(
+        command, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True
+    )  # fmt: skip
     assert process.stdout is not None
+    timed_out = threading.Event()
+
+    def kill() -> None:
+        timed_out.set()
+        if on_kill:
+            on_kill()
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+    timer = threading.Timer(timeout, kill) if timeout is not None else None
+    if timer:
+        timer.start()
     lines: list[str] = []
-    for line in process.stdout:
-        sys.stdout.write(line)
-        lines.append(line)
-    return "".join(lines), process.wait()
+    try:
+        for line in process.stdout:
+            sys.stdout.write(line)
+            lines.append(line)
+        code = process.wait()
+    finally:
+        if timer:
+            timer.cancel()
+    if timed_out.is_set():
+        raise StepTimeout("".join(lines), timeout or 0)
+    return "".join(lines), code
 
 
 def stop(category: str, detail: str) -> None:
@@ -467,6 +513,18 @@ def scrubbed_env(home: Path) -> dict[str, str]:
     return env
 
 
+DEFAULT_TIMEOUT = 300.0
+TIMEOUT = re.compile(r"timeout:\s*(\d+)\s*([sm])\b", re.IGNORECASE)
+
+
+def step_timeout(rest: str) -> float:
+    """Seconds a step may run: its `timeout: 10m` / `timeout: 1s`, else 300."""
+    match = TIMEOUT.search(rest)
+    if not match:
+        return DEFAULT_TIMEOUT
+    return float(int(match.group(1)) * (60 if match.group(2).lower() == "m" else 1))
+
+
 def prd_text(cwd: Path, area: str) -> str:
     prd = cwd / ".agents" / "cycles" / area / "prd.md"
     return prd.read_text() if prd.exists() else ""
@@ -484,19 +542,29 @@ def run_qa(config: Config, root: Path, cwd: Path, area: str, local: bool) -> int
     passed = 0
     for number, (command, expect, host) in enumerate(steps, 1):
         started = time.monotonic()
-        if host:
-            with tempfile.TemporaryDirectory() as home:
-                output, code = stream(["sh", "-c", command], cwd, scrubbed_env(Path(home)))
-        else:
-            full = ["sh", "-c", command] if local else docker_run(config, root, cwd, ["sh", "-c", command])
-            output, code = stream(full, cwd)
+        limit = step_timeout(expect)
+        timed_out = False
+        try:
+            if host:
+                with tempfile.TemporaryDirectory() as home:
+                    output, code = stream(["sh", "-c", command], cwd, scrubbed_env(Path(home)), timeout=limit)
+            elif local:
+                output, code = stream(["sh", "-c", command], cwd, timeout=limit)
+            else:
+                name = f"kit-qa-{os.getpid()}-{number}"
+                full = docker_run(config, root, cwd, ["sh", "-c", command])
+                full[3:3] = ["--name", name]  # so a timeout can kill the container, not just the client
+                output, code = stream(full, cwd, timeout=limit, on_kill=functools.partial(docker_kill, name))
+        except StepTimeout as late:
+            output, code, timed_out = late.output, 124, True
         seconds = time.monotonic() - started
         (logs / f"{number:02d}.log").write_text(output)
         passed += code == 0
         tail = "\n".join(output.splitlines()[-20:])
+        note = f"Timed out after {limit:g}s (killed)\n" if timed_out else ""
         entries.append(
             f"## Step {number}: `{command}`\n\nYou should see: {expect}\n\n"
-            f"Exit code: {code}\nDuration: {seconds:.1f}s\nLog: {logs / f'{number:02d}.log'}\n\n```\n{tail}\n```\n"
+            f"{note}Exit code: {code}\nDuration: {seconds:.1f}s\nLog: {logs / f'{number:02d}.log'}\n\n```\n{tail}\n```\n"
         )
     (folder / "qa.md").write_text("\n".join(entries))
     return passed

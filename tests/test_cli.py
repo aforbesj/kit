@@ -2,6 +2,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -846,7 +847,7 @@ def test_qa_steps_run_inside_the_sandbox_command(tmp_path: Path, monkeypatch: py
     root = product_with_prd(tmp_path, PRD_WITH_STEPS)
     seen: list[list[str]] = []
 
-    def fake_stream(command: list[str], cwd: Path) -> tuple[str, int]:
+    def fake_stream(command: list[str], cwd: Path, **_: Any) -> tuple[str, int]:
         seen.append(command)
         return "ok\n", 0
 
@@ -877,11 +878,11 @@ def test_host_steps_run_on_the_host_scrubbed(tmp_path: Path, monkeypatch: pytest
     seen: list[list[str]] = []
     real = cli.stream
 
-    def spy(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> tuple[str, int]:
+    def spy(command: list[str], cwd: Path, env: dict[str, str] | None = None, **kw: Any) -> tuple[str, int]:
         seen.append(command)
         if command[0] == "docker":
             return "ok\n", 0
-        return real(command, cwd, env)
+        return real(command, cwd, env, **kw)
 
     monkeypatch.setattr(cli, "stream", spy)
     monkeypatch.setattr(cli, "venv_volume", lambda root, cwd: "vol")
@@ -892,3 +893,30 @@ def test_host_steps_run_on_the_host_scrubbed(tmp_path: Path, monkeypatch: pytest
     home = Path((root / "home.txt").read_text().strip())
     assert not home.exists() and home != Path.home()
     assert (root / "pwd.txt").read_text().strip() == str(root)
+
+
+def test_step_timeout_parses_default_seconds_and_minutes() -> None:
+    assert cli.step_timeout("see it. Proves: x.") == 300
+    assert cli.step_timeout("see it. timeout: 1s. Proves: x.") == 1
+    assert cli.step_timeout("see it. Timeout: 10m Proves: x.") == 600
+
+
+PRD_TIMEOUT = """# PRD
+
+## QA steps
+
+1. `sleep 30 & echo $! > child.pid; wait`: see nothing. timeout: 1s. Proves: killed.
+"""
+
+
+def test_timed_out_step_is_killed_with_children_and_fails(tmp_path: Path) -> None:
+    root = product_with_prd(tmp_path, PRD_TIMEOUT)
+    started = time.monotonic()
+
+    assert cli.run_qa(cli.load_config(root), root, root, "core", local=True) == 0
+    assert time.monotonic() - started < 10
+    pid = int((root / "child.pid").read_text())
+    time.sleep(0.2)
+    state = Path(f"/proc/{pid}/stat")
+    assert not state.exists() or state.read_text().split(") ")[1][0] == "Z"  # gone, or an unreaped zombie
+    assert "Timed out after 1s" in (root / ".agents/cycles/core/qa.md").read_text()
