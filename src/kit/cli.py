@@ -5,10 +5,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from datetime import date, datetime, timedelta
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +64,31 @@ def load_config(root: Path) -> Config:
         raise SystemExit("No .agents/kit.json here. Run `kit init` first.")
     config: Config = json.loads(path.read_text())
     return config
+
+
+def _numbers(version: str) -> tuple[int, ...] | None:
+    parts = version.split(".")
+    return tuple(int(p) for p in parts) if parts and all(p.isdigit() for p in parts) else None
+
+
+def version_warning(root: Path) -> str | None:
+    """One warning line when the installed kit is older than the Product's `kit.json`; else None."""
+    try:
+        wanted = json.loads((root / ".agents" / "kit.json").read_text()).get("kit")
+        installed = metadata.version("kit-cycle")
+    except (OSError, ValueError, AttributeError, metadata.PackageNotFoundError):
+        return None
+    if not isinstance(wanted, str):
+        return None
+    have, need = _numbers(installed), _numbers(wanted)
+    if have is None or need is None or have >= need:
+        return None
+    return f"Warning: kit {installed} is older than this Product's {wanted}. Fix: ./setup.sh in the Kit checkout"
+
+
+def warn_version(root: Path) -> None:
+    if message := version_warning(root):
+        print(message)
 
 
 def workspace(root: Path, area: str) -> Path:
@@ -129,7 +157,7 @@ def standards(config: Config, cwd: Path) -> str:
 
 
 def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands_off: bool, local: bool) -> list[str]:
-    base: list[str] = list(config.get("agent", ["claude"]))
+    base: list[str] = [*config.get("agent", ["claude"]), *plugin_args(root, cwd)]
     if not hands_off:
         return [*base, "--permission-mode", "acceptEdits", "--model", model, text]
     if local:
@@ -141,9 +169,54 @@ def agent(config: Config, root: Path, cwd: Path, model: str, text: str, *, hands
         "-v", f"{repo}:{repo}",
         "-v", f"{repo}/data:{repo}/data:ro",
         "-v", f"{repo}/data/out:{repo}/data/out",
+        "-v", f"{venv_volume(root, cwd)}:{VENV_PATH}", "-e", f"UV_PROJECT_ENVIRONMENT={VENV_PATH}",
         "-w", str(cwd.resolve()), image_name(config),
         *base, "-p", "--dangerously-skip-permissions", "--model", model, text,
     ]  # fmt: skip
+
+
+VENV_PATH = "/home/kit/venv"
+
+
+def is_kit(root: Path) -> bool:
+    """True when the Product is the Kit itself: pyproject name `kit-cycle` (ADR 0010)."""
+    try:
+        return tomllib.loads((root / "pyproject.toml").read_text()).get("project", {}).get("name") == "kit-cycle"
+    except (OSError, tomllib.TOMLDecodeError):
+        return False
+
+
+def plugin_args(root: Path, cwd: Path) -> list[str]:
+    """When the Product is the Kit, load the worktree's own plugin (ADR 0010)."""
+    return ["--plugin-dir", str(cwd.resolve() / "src" / "kit" / "plugin")] if is_kit(root) else []
+
+
+def hand_off(root: Path, area: str, argv: list[str]) -> int | None:
+    """When the Product is the Kit, run the worktree's own CLI and return its exit code (ADR 0010).
+
+    Returns None when there is nothing to hand off to: another Product, or already handed off.
+    """
+    if os.environ.get("KIT_SELF") == "1" or not is_kit(root):
+        return None
+    try:
+        cwd = workspace(root, area)
+    except KeyboardInterrupt:
+        stop("interrupted", "Ctrl-C")
+        return 130
+    command = ["uv", "run", "--project", str(cwd), "kit", *argv]
+    try:
+        return subprocess.run(command, check=False, cwd=root, env={**os.environ, "KIT_SELF": "1"}).returncode
+    except KeyboardInterrupt:
+        return 130  # the child got the same Ctrl-C and printed the Stop reason
+
+
+def venv_volume(root: Path, cwd: Path) -> str:
+    """The Docker volume holding this worktree's sandbox .venv: kit-venv-<product>-<area>."""
+
+    def clean(name: str) -> str:
+        return re.sub(r"[^A-Za-z0-9_.-]+", "-", name).strip("-.") or "x"
+
+    return f"kit-venv-{clean(root.resolve().name)}-{clean(cwd.resolve().name)}"
 
 
 def image_name(config: Config) -> str:
@@ -186,15 +259,34 @@ def _ok(command: list[str]) -> bool:
         return False
 
 
+def sandbox_ids() -> tuple[int, int]:
+    """The UID and GID the sandbox user gets: the host's, so the bind-mounted repo stays readable and writable.
+
+    A root host maps to 1000, because Claude Code refuses to skip permission prompts as root.
+    """
+    uid, gid = os.getuid(), os.getgid()
+    return (uid, gid) if uid else (1000, 1000)
+
+
 def sandbox(image: str) -> None:
-    """Make sure Docker answers and the sandbox image exists, building it on first use."""
+    """Make sure Docker answers and the sandbox image fits this machine, building it on first use."""
     if not shutil.which("docker"):
         raise SystemExit("Docker is not installed. `kit doctor` shows the fix; `kit run --local` skips the sandbox.")
     if not _ok(["docker", "info"]):
         raise SystemExit("Docker is not running. Start it, or use `kit run --local` to skip the sandbox.")
+    uid, gid = sandbox_ids()
+    want = f"{uid}:{gid}"
     if not _ok(["docker", "image", "inspect", image]):
         print(f"Building the sandbox image {image} (first run only)...")
-        subprocess.run(["docker", "build", "-t", image, str(SANDBOX)], check=True)
+    else:
+        probe = f'test -d {VENV_PATH} && echo "$(id -u):$(id -g)"'
+        have = _output(["docker", "run", "--rm", image, "sh", "-c", probe])
+        if have == want:
+            return
+        built = f"user {have}" if have else f"no {VENV_PATH}"
+        print(f"Rebuilding the sandbox image {image} (it has {built}; this machine needs user {want})...")
+    build = ["docker", "build", "--build-arg", f"UID={uid}", "--build-arg", f"GID={gid}", "-t", image, str(SANDBOX)]
+    subprocess.run(build, check=True)
 
 
 def system() -> str:
@@ -238,6 +330,7 @@ def doctor(root: Path) -> int:
     """Print what this machine has and the fix for what it lacks. Fails only on what every Cycle needs."""
     kind = system()
     print(f"kit doctor ({kind})")
+    warn_version(root)
     missing = False
     for name, ok, required, fix in checks(root, kind):
         mark = "ok  " if ok else ("FAIL" if required else "skip")
@@ -246,53 +339,139 @@ def doctor(root: Path) -> int:
     return 1 if missing else 0
 
 
-def stream(command: list[str], cwd: Path) -> str:
-    """Run a command, echo its output live, and return it. Stops kit on failure."""
+def stream(command: list[str], cwd: Path) -> tuple[str, int]:
+    """Run a command, echo its output live, and return its output and exit code."""
     process = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     assert process.stdout is not None
     lines: list[str] = []
     for line in process.stdout:
         sys.stdout.write(line)
         lines.append(line)
-    if process.wait() != 0:
-        raise SystemExit(process.returncode)
-    return "".join(lines)
+    return "".join(lines), process.wait()
+
+
+def stop(category: str, detail: str) -> None:
+    """Print the Stop reason: why `kit run` ended. Always the last line."""
+    print(f"Stop reason: {category}: {detail or 'no detail'}")
+
+
+def dirty_files(cwd: Path) -> list[str]:
+    """Paths `git status` reports as uncommitted (staged, modified or untracked)."""
+    # Not git(): it strips the leading space of ` M path`, which would eat the path's first character.
+    done = subprocess.run(
+        ["git", "status", "--porcelain", "-z", "--untracked-files=all"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    entries = done.stdout.split("\0")
+    files: list[str] = []
+    i = 0
+    while i < len(entries):
+        entry = entries[i]
+        i += 1
+        if not entry:
+            continue
+        files.append(entry[3:])
+        if entry[0] in "RC":  # renames and copies carry the old path as the next entry
+            i += 1
+    return files
+
+
+def stop_dirty(area: str, files: list[str], where: str) -> None:
+    """Explain a dirty tree: the files and the commands to keep or discard them. Never touches git."""
+    print("dirty tree:")
+    for name in files:
+        print(f"  {name}")
+    tree = f".worktrees/{area}"
+    print(f'keep:    git -C {tree} add -A && git -C {tree} commit -m "<n>: <title>"')
+    print(f"discard: git -C {tree} reset -q --hard && git -C {tree} clean -fd")
+    print(f"then: kit run {area}")
+    stop("dirty tree", f"{where} {len(files)} uncommitted: {', '.join(files)}")
+
+
+def _issues(cwd: Path, area: str) -> list[Path]:
+    return sorted((cwd / ".agents" / "cycles" / area / "issues").glob("*.md"))
+
+
+def _done(cwd: Path, area: str) -> int:
+    return sum("status: done" in path.read_text() for path in _issues(cwd, area))
+
+
+def _last_issue(cwd: Path, area: str) -> str:
+    issues = _issues(cwd, area)
+    return max(issues, key=lambda path: path.stat().st_mtime).stem if issues else "none"
+
+
+def _last_line(output: str) -> str:
+    return next((line.strip() for line in reversed(output.splitlines()) if line.strip()), "no output")
 
 
 def once(root: Path, area: str, issue: str | None) -> int:
     """A hands-on session in the Area's checkout: planning, or one named Issue."""
     config = load_config(root)
+    warn_version(root)
     cwd = workspace(root, area)
     models: dict[str, str] = config.get("models", {})
     if issue:
         text = prompt("implement", area, cwd, f"Build Issue {issue}.")
         command = agent(config, root, cwd, models.get("implement", "sonnet"), text, hands_off=False, local=True)
     else:
-        command = [*config.get("agent", ["claude"]), "--model", models.get("plan", "opus")]
-    return subprocess.run(command, check=False, cwd=cwd).returncode
+        command = [*config.get("agent", ["claude"]), *plugin_args(root, cwd), "--model", models.get("plan", "opus")]
+    code = subprocess.run(command, check=False, cwd=cwd).returncode
+    if files := dirty_files(cwd):
+        stop_dirty(area, files, "after once,")
+    return code
 
 
 def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
     """Hands-off Build: one Issue per pass until COMPLETE, then a fresh review."""
     config = load_config(root)
-    if not local:
-        sandbox(image_name(config))
-    cwd = workspace(root, area)
-    (root / "data" / "out").mkdir(parents=True, exist_ok=True)
-    models: dict[str, str] = config.get("models", {})
-    for _ in range(max_iterations):
-        build = prompt("implement", area, cwd)
-        output = stream(
-            agent(config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local), cwd
-        )
-        if COMPLETE not in output:
-            continue
-        check = prompt("review", area, cwd, standards(config, cwd))
-        output = stream(agent(config, root, cwd, models.get("review", "opus"), check, hands_off=True, local=local), cwd)
-        if CLEAN in output:
-            print(f"Build done. Next: `kit once {area}` and run /kit:qa.")
-            return 0
-    print(f"Stopped after {max_iterations} iterations. Check progress.txt, then run again.")
+    warn_version(root)
+    cwd = root
+    try:
+        if not local:
+            sandbox(image_name(config))
+        cwd = workspace(root, area)
+        if files := dirty_files(cwd):
+            stop_dirty(area, files, "before start,")
+            return 1
+        (root / "data" / "out").mkdir(parents=True, exist_ok=True)
+        models: dict[str, str] = config.get("models", {})
+        passes = 0
+        for _ in range(max_iterations):
+            passes += 1
+            build = prompt("implement", area, cwd)
+            output, code = stream(
+                agent(config, root, cwd, models.get("implement", "sonnet"), build, hands_off=True, local=local), cwd
+            )
+            if code != 0:
+                stop("agent failed", f"implement exited {code}: {_last_line(output)}")
+                return code
+            if files := dirty_files(cwd):
+                stop_dirty(area, files, f"pass {passes} (implement) left")
+                return 1
+            if COMPLETE not in output:
+                continue
+            check = prompt("review", area, cwd, standards(config, cwd))
+            output, code = stream(
+                agent(config, root, cwd, models.get("review", "opus"), check, hands_off=True, local=local), cwd
+            )
+            if code != 0:
+                stop("agent failed", f"review exited {code}: {_last_line(output)}")
+                return code
+            if files := dirty_files(cwd):
+                stop_dirty(area, files, f"pass {passes} (review) left")
+                return 1
+            if CLEAN in output:
+                print(f"Build done. Next: `kit once {area}` and run /kit:qa.")
+                stop("complete", f"{_done(cwd, area)} Issues done, review clean")
+                return 0
+    except KeyboardInterrupt:
+        stop("interrupted", "Ctrl-C")
+        return 130
+    stop("cap reached", f"{max_iterations} passes, last Issue {_last_issue(cwd, area)}")
     return 1
 
 
@@ -344,6 +523,10 @@ def close(root: Path, area: str, abandon: bool) -> int:
 def _free(root: Path, cwd: Path, branch: str, delete_branch: bool) -> None:
     if cwd.exists():
         git(root, "worktree", "remove", "--force", str(cwd))
+    try:
+        subprocess.run(["docker", "volume", "rm", venv_volume(root, cwd)], check=False, capture_output=True)
+    except OSError:
+        pass  # no Docker installed: nothing to remove
     if delete_branch:
         git(root, "branch", "-D", branch)
 
@@ -377,6 +560,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "doctor":
         return doctor(root)
+    if args.command in ("once", "run"):
+        handed = hand_off(root, args.area, sys.argv[1:] if argv is None else argv)
+        if handed is not None:
+            return handed
     if args.command == "once":
         return once(root, args.area, args.issue)
     if args.command == "run":

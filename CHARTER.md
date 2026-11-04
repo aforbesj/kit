@@ -25,10 +25,12 @@ The Kit Owner, and anyone who forks the Kit as their standard.
 
 - **kit** (owner: Kit Owner): the skills, CLI, setup.sh, standards, template and sandbox.
   - Top 3:
-    1. Leave a Build running and trust how it stopped: no staged-but-uncommitted work, `kit doctor` warns when the installed `kit` is older than the Product's, the sandbox and the host don't rebuild each other's `.venv`, and a Cycle that changes the Kit builds and QAs with its own skills and CLI. (raised 4×, last 2026-11-03)
-    2. Sign off QA from recorded results: an agent launches what was built (CLI, plugin, app), follows `qa.md` and reports before the human judges. (raised 3×, last 2026-11-03)
-    3. Start a Product that builds first time, named once a Brainstorm has settled what it is. (raised 2×, last 2026-11-03)
+    1. Sign off QA from recorded results: an agent launches what was built (CLI, plugin, app), on a host with Docker, follows `qa.md` and reports before the human judges. (raised 4×, last 2026-11-03)
+    2. Start a Product that builds first time, named once a Brainstorm has settled what it is. (raised 2×, last 2026-11-03)
+    3. Every `kit run` ends with a Stop reason, including `not started` when Docker or the sandbox fails. (raised 1×, last 2026-11-03)
   - Bottom 3:
-    4. Research or Prototype when the grill asks. (raised 1×, last 2026-11-02)
+    4. `kit status <area>` prints the last Stop reason and the dirty files without starting an agent. (raised 1×, last 2026-11-03)
+    5. Fact lookups (grill, Research) run on the cheapest model that is enough, set in `kit.json` models. (raised 1×, last 2026-11-03)
+    6. Research or Prototype when the grill asks. (raised 1×, last 2026-11-02)
 
 Stay tiny: every line must change what an agent does.
