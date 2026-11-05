@@ -21,6 +21,9 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any
 
+from rich.console import Console
+from rich.markdown import Markdown
+
 PACKAGE = Path(__file__).parent
 TEMPLATE = PACKAGE / "template"
 SKILLS = PACKAGE / "plugin" / "skills"
@@ -420,11 +423,20 @@ class StepTimeout(Exception):
         self.seconds = seconds
 
 
+def print_agent_message(text: str) -> None:
+    """Render an agent's message as Markdown on a terminal; plain text for files and pipes."""
+    if sys.stdout.isatty():
+        Console().print(Markdown(text, code_theme="dracula"))
+    else:
+        print(text)
+
+
 def stream(
-    command: list[str], cwd: Path, env: dict[str, str] | None = None, timeout: float | None = None, on_kill: Callable[[], None] | None = None
+    command: list[str], cwd: Path, env: dict[str, str] | None = None, timeout: float | None = None, on_kill: Callable[[], None] | None = None, agent: bool = False
 ) -> tuple[str, int]:  # fmt: skip
     """Run a command, echo its output live, and return its output and exit code.
 
+    With `agent` on a terminal, the output is the agent's message: it is held and printed once as Markdown.
     Past `timeout` seconds the command's whole process group is killed and StepTimeout is raised.
     If reading is interrupted (Ctrl-C), the group is killed too before the exception propagates.
     """
@@ -450,17 +462,23 @@ def stream(
     if timer:
         timer.start()
     lines: list[str] = []
+    hold = agent and sys.stdout.isatty()
     try:
         for line in process.stdout:
-            sys.stdout.write(line)
+            if not hold:
+                sys.stdout.write(line)
             lines.append(line)
         code = process.wait()
     except BaseException:  # Ctrl-C and the like: the command has its own session, so stop it here
         kill()
+        if hold:
+            sys.stdout.write("".join(lines))
         raise
     finally:
         if timer:
             timer.cancel()
+    if hold:
+        print_agent_message("".join(lines))
     if timed_out.is_set():
         raise StepTimeout("".join(lines), timeout or 0)
     return "".join(lines), code
@@ -672,6 +690,7 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
                 ),
                 cwd,
                 on_kill=None if local else functools.partial(docker_kill, name),
+                agent=True,
             )
             if code != 0:
                 stop("agent failed", f"implement exited {code}: {_last_line(output)}")
@@ -687,6 +706,7 @@ def run(root: Path, area: str, max_iterations: int, local: bool) -> int:
                 agent(config, root, cwd, models.get("review", "opus"), check, hands_off=True, local=local, name=name),
                 cwd,
                 on_kill=None if local else functools.partial(docker_kill, name),
+                agent=True,
             )
             if code != 0:
                 stop("agent failed", f"review exited {code}: {_last_line(output)}")
