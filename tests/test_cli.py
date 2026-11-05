@@ -1139,3 +1139,19 @@ def test_close_reports_checkout_it_cannot_remove(
     out = capsys.readouterr().out
     assert "Next:" in out
     assert "Could not remove" in out and "git worktree prune" in out
+
+
+def test_agent_message_is_plain_text_off_a_terminal(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    output, code = cli.stream(["sh", "-c", "printf '# Done\\n**bold**\\n'"], tmp_path, agent=True)
+    assert (output, code) == ("# Done\n**bold**\n", 0)
+    assert capsys.readouterr().out == "# Done\n**bold**\n"
+
+
+def test_agent_message_renders_markdown_on_a_terminal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli.sys.stdout, "isatty", lambda: True)
+    output, _ = cli.stream(["sh", "-c", "printf '**bold**\\n'"], tmp_path, agent=True)
+    assert output == "**bold**\n"
+    shown = capsys.readouterr().out
+    assert "bold" in shown and "**" not in shown
